@@ -1,0 +1,7 @@
+mcp==1.29.0
+jsonschema>=4.21
+starlette>=0.37
+uvicorn>=0.29
+anyio>=4.5,<5
+python-dotenv>=1.0
+google-genai>=1.0
