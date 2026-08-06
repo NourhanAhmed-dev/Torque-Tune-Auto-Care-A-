@@ -34,7 +34,7 @@ def _parse_frontmatter(raw: str) -> tuple[dict, str]:
         k, v = line.split(":", 1)
         v = v.strip()
         if v == "null":
-            v = None
+            v = ""
         meta[k.strip()] = v
     return meta, body
 
