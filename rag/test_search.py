@@ -89,17 +89,20 @@
 # ____________________________________________________________________________________________
 # test naive rag
 from rag.naive_rag import NaiveRAG
+from rag.hybrid_rag import HybridRAG
 
+# test hybrid rag : rag = HybridRAG()
+# test naive rag : rag = NaiveRAG() 
 
 def main():
-    rag = NaiveRAG()
+    rag = HybridRAG()
 
     query = "What is the emissions disclosure policy for vehicle remapping?"
 
     result = rag.answer(query)
 
     print("=" * 70)
-    print("NAIVE RAG TEST")
+    print("HYBRID RAG TEST")
     print("=" * 70)
 
     print("\nQuestion:")

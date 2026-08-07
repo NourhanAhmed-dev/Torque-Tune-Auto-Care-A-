@@ -69,7 +69,6 @@ class NaiveRAG:
 
         # Retrieval
         retrieval_start = time.perf_counter()
-
         retrieved = self.retriever.retrieve(
             query=query,
             top_k=self.top_k,
@@ -124,43 +123,31 @@ class NaiveRAG:
 
         # Return Final Answer
         return RAGAnswer(
-
+            
             query=query,
-
             answer=generation.answer,
-
             architecture="naive",
-
             retrieved=retrieved,
-
             retrieved_count=len(retrieved),
-
             retrieved_doc_ids=[
                 r.doc_id
                 for r in retrieved
             ],
-
             prompt_tokens=generation.prompt_tokens,
-
             completion_tokens=generation.completion_tokens,
-
             total_tokens=generation.total_tokens,
-
             retrieval_latency_s=round(
                 retrieval_latency,
                 4,
             ),
-
             generation_latency_s=round(
                 generation_latency,
                 4,
             ),
-
             total_latency_s=round(
                 total_latency,
                 4,
             ),
-
             extra={
                 "top_k": self.top_k,
             },
