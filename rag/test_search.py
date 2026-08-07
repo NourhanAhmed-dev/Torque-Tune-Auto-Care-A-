@@ -62,3 +62,31 @@ def run_test():
 
 if __name__ == "__main__":
     run_test()
+
+# Test retriever 
+# TEst Done
+# from rag.retriever import VectorRetriever
+
+# retriever = VectorRetriever()
+
+# print("=" * 60)
+# print("Testing Retriever")
+# print("=" * 60)
+
+# results = retriever.retrieve(
+#     "What is the emissions disclosure policy?"
+# )
+
+# for i, r in enumerate(results, 1):
+
+#     print()
+
+#     print(f"Result #{i}")
+
+#     print("Doc ID :", r.doc_id)
+
+#     print("Type   :", r.metadata.get("doc_type"))
+
+#     print("distance  :", r.distance)
+
+#     print(r.text[:250])

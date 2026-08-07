@@ -1,16 +1,22 @@
 ---
-doc_id: part_spec_001
-doc_type: part_spec
-sku: SKU-ECU-STD-101
-part_name: Standalone ECU + Harness
+doc_id: policy_egy_v1
+doc_type: policy
+jurisdiction: Egypt
+jurisdiction_code: EGY
+effective_date: 2023-01-01
+superseded_by: null
 ---
-# Parts Specification: Standalone ECU + Harness
+# Emissions & Warranty Disclosure Policy — Egypt (v1)
 
-**SKU:** SKU-ECU-STD-101
-**Notes:** Full replacement engine management; bypasses factory emissions strategy. Requires Stage 3 sign-off workflow.
+**Jurisdiction:** Egypt
+**Regulatory authority:** Egyptian Ministry of Environment / Traffic Authority
+**Effective date:** 2023-01-01
 
-## Compatibility
-Compatible with platforms using FA20, EcoBoost 2.3, FA24, VQ37VHR engine families, subject to model-year confirmation against the vehicle record.
+## Scope
+Applies to any tuning modification logged with category `emissions_affecting` (ECU remaps that bypass emissions hardware, catalytic converter or DPF removal, EGR delete) performed on vehicles registered in Egypt.
 
-## Install Notes
-Cross-reference the relevant ECU tuning guide and, for any part affecting emissions hardware, the jurisdiction-specific emissions & warranty policy before install.
+## Rule
+1. These modifications may void the manufacturer's emissions warranty and, in Egypt, can make the vehicle non-compliant for road use or inspection.
+2. Before the modification is logged as performed, the assigned technician must give an explicit, recorded confirmation that the client was verbally informed of the warranty and compliance impact.
+3. Cosmetic and performance modifications that do not affect emissions hardware do not require this sign-off.
+4. If sign-off is declined, log the modification as `awaiting_signoff` and escalate to a shift lead.
