@@ -1,9 +1,7 @@
 from __future__ import annotations
-
 import pickle
 from abc import ABC, abstractmethod
 from pathlib import Path
-
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import TruncatedSVD
@@ -28,7 +26,7 @@ class Embedder(ABC):
     def embed_one(self, text: str) -> np.ndarray:
         return self.embed([text])[0]
 
-
+# ممكن اشيل ده لو مش  محتاجاه 
 class LocalLSAEmbedder(Embedder):
     """Offline embedder: TF-IDF (word 1-2 grams) -> TruncatedSVD -> L2-normalize."""
 
