@@ -3,12 +3,13 @@ import os
 import time
 from dataclasses import dataclass
 from typing import Sequence
-import google.generativeai as genai
+from google import genai
 from rag import config as cfg
 from rag.retriever import SearchResult
 
 
 # Generation Result
+
 @dataclass
 class GenerationResult:
     answer: str
@@ -17,16 +18,13 @@ class GenerationResult:
     total_tokens: int
     latency: float
 
+
 # Generator
 class Generator:
 
     def __init__(
         self,
-        model_name: str = getattr(
-            cfg,
-            "GENERATOR_MODEL_NAME",
-            "gemini-1.5-flash",
-        ),
+        model_name: str = cfg.GENERATOR_MODEL_NAME,
         api_key: str | None = None,
         temperature: float = 0,
     ):
@@ -40,14 +38,10 @@ class Generator:
         if not key:
             raise RuntimeError("GEMINI_API_KEY is not set.")
 
-        genai.configure(api_key=key)
+        self.client = genai.Client(api_key=key)
+        self.model_name = model_name
+        self.temperature = temperature
 
-        self.model = genai.GenerativeModel(
-            model_name=model_name,
-            generation_config=genai.GenerationConfig(
-                temperature=temperature,
-            ),
-        )
 
     # Format Retrieved Context
     def _format_context(
@@ -91,22 +85,13 @@ Rules:
 
 - Mention the document IDs when possible.
 
-========================
-Context
-========================
-
+Context:
 {context}
 
-========================
-Question
-========================
-
+Question:
 {query}
-
-========================
-Answer
-========================
 """
+
     # Generate
     def generate(
         self,
@@ -134,7 +119,15 @@ Answer
 
         start = time.perf_counter()
 
-        response = self.model.generate_content(prompt)
+        # ----------- التعديل الوحيد -----------
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config={
+                "temperature": self.temperature,
+            },
+        )
+        # --------------------------------------
 
         latency = time.perf_counter() - start
 
