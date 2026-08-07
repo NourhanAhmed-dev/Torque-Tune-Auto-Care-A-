@@ -15,6 +15,7 @@ import time
 from dotenv import load_dotenv
 from dataclasses import dataclass
 from google import genai
+from google.genai.errors import ClientError
 
 from . import observation_masking, recursive_summary, sliding_window, zone_pruning
 from .recursive_summary import gemini_summarizer
@@ -64,16 +65,47 @@ def _judge(client, answer):
 
 def evaluate_strategy(name, prune_fn, client, summarizer, cases):
     row = Row(name)
-    for case in cases:
+    for case_idx, case in enumerate(cases):
         pruned, t_prune = timed(prune_fn, case, summarizer)
-        answer, t_ans = timed(_answer, client, pruned, QUERY)
-        row.correct += _judge(client, answer)
+        
+        # Retry logic for answer call
+        answer = None
+        for attempt in range(3):
+            try:
+                answer, t_ans = timed(_answer, client, pruned, QUERY)
+                break
+            except ClientError as e:
+                if "429" in str(e) and attempt < 2:
+                    wait_time = 60  
+                    print(f"  Rate limit hit on case {case_idx+1}/{len(cases)}, waiting {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    raise
+        
+        # Retry logic for judge call
+        judge_result = False
+        for attempt in range(3):
+            try:
+                judge_result = _judge(client, answer)
+                break
+            except ClientError as e:
+                if "429" in str(e) and attempt < 2:
+                    wait_time = 60
+                    print(f"  Rate limit hit during judge, waiting {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    raise
+        
+        row.correct += judge_result
         row.in_tok += transcript_tokens(pruned)
         row.out_tok += count_tokens(answer) + sum(
             count_tokens(m.content) for m in pruned if m.role == TurnType.SUMMARY)
         row.secs += t_prune + t_ans
         row.n += 1
-        time.sleep(4)
+        
+        # Delay to avoid hitting rate limits 
+        print(f"  {name}: case {case_idx+1}/{len(cases)} done")
+        time.sleep(5)  # 5 sec
     return row
 
 
