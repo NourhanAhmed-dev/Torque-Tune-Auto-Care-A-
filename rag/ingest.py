@@ -1,3 +1,4 @@
+# to creat chrom db (vectos store) from the knowledge corpus
 """
 Ingest the knowledge corpus into ChromaDB.
 
