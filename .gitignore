@@ -21,7 +21,7 @@ env/
 # Logs
 *.log
 
-# SQLite (لو الداتا مش مطلوبة)
+# SQLite 
 # *.db
 
 # OS
