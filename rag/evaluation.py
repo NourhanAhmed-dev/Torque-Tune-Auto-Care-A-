@@ -1,87 +1,3 @@
-# from naive_rag import NaiveRAG
-# from hybrid_rag import HybridRAG
-# from agentic_rag import AgenticRAG
-# import pandas as pd
-
-# QUESTIONS = [
-#     (
-#         "Q1",
-#         "What is the warranty disclosure policy for emissions-affecting modifications in Egypt?",
-#     ),
-#     (
-#         "Q2",
-#         "Is the Front-Mount Intercooler an emissions-affecting modification?",
-#     ),
-#     (
-#         "Q3",
-#         "What does SKU-DP-DECAT-102 refer to?",
-#     ),
-#     (
-#         "Q4",
-#         "What is the latest guidance in TSB-2026-002?",
-#     ),
-#     (
-#         "Q5",
-#         "A customer in the European Union wants to install SKU-ECU-STD-101. What approvals are required before the job can be completed?",
-#     ),
-#     (
-#         "Q6",
-#         "A customer declines to sign the emissions disclosure after requesting a standalone ECU install in the European Union. What should the technician do?",
-#     ),
-# ]
-
-# naive = NaiveRAG()
-# hybrid = HybridRAG()
-# agentic = AgenticRAG()
-
-# rows = []
-
-# for qid, question in QUESTIONS:
-
-#     print("=" * 80)
-#     print(qid)
-#     print(question)
-#     print("=" * 80)
-
-#     result = naive.answer(question)
-
-#     rows.append(
-#         {
-#             "Question": qid,
-#             "Architecture": "Naive",
-#             "Tokens": result.total_tokens,
-#             "Latency": result.total_latency_s,
-#             "Answer": result.answer,
-#         }
-#     )
-
-#     result = hybrid.answer(question)
-
-#     rows.append(
-#         {
-#             "Question": qid,
-#             "Architecture": "Hybrid",
-#             "Tokens": result.total_tokens,
-#             "Latency": result.total_latency_s,
-#             "Answer": result.answer,
-#         }
-#     )
-
-#     result = agentic.answer(question)
-
-#     rows.append(
-#         {
-#             "Question": qid,
-#             "Architecture": "Agentic",
-#             "Tokens": result.total_tokens,
-#             "Latency": result.total_latency_s,
-#             "Answer": result.answer,
-#         }
-#     )
-# df = pd.DataFrame(rows)
-# print(df)
-
-
 """
 RAG Architecture Evaluation & Benchmarking Suite (Production-Grade).
 
@@ -216,7 +132,7 @@ def run_rag_benchmark():
         favored = q_item["favored_architecture"]
         expected_kws = q_item["expected_keywords"]
 
-        print(f"📌 [{q_id}] ({q_cat}) -> Favors: {favored}")
+        print(f" [{q_id}] ({q_cat}) -> Favors: {favored}")
         print(f"   Query: '{query_str}'\n")
 
         for arch_name, arch_instance in architectures.items():
@@ -302,7 +218,7 @@ def run_rag_benchmark():
     # Aggregated Summary Statistics
     # -----------------------------------------------------------------
     print("\n" + "=" * 90)
-    print("📈 AGGREGATE SUMMARY STATISTICS (SUCCESSFUL RUNS)")
+    print("AGGREGATE SUMMARY STATISTICS (SUCCESSFUL RUNS)")
     print("=" * 90)
 
     success_df = df[df["Status"] == "SUCCESS"]
@@ -331,7 +247,7 @@ def run_rag_benchmark():
     # Programmatic Best Architecture Selection
     # -----------------------------------------------------------------
     print("\n" + "=" * 90)
-    print("🏆 AUTOMATED ARCHITECTURE SELECTION FOR PRODUCTION")
+    print(" AUTOMATED ARCHITECTURE SELECTION FOR PRODUCTION")
     print("=" * 90)
 
     best_arch = summary_df.sort_values(
