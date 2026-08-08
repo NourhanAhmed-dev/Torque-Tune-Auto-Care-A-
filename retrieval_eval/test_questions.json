@@ -1,0 +1,72 @@
+[
+  {
+    "id": "Q1",
+    "category": "Policy Lookup",
+    "favored_architecture": "Naive RAG",
+    "query": "What is the warranty disclosure policy for emissions-affecting modifications in Egypt?",
+    "expected_keywords": [
+      "warranty",
+      "emissions",
+      "Egypt",
+      "disclosure",
+      "policy"
+    ]
+  },
+  {
+    "id": "Q2",
+    "category": "Fact Verification",
+    "favored_architecture": "Naive RAG",
+    "query": "Is the Front-Mount Intercooler an emissions-affecting modification?",
+    "expected_keywords": [
+      "Front-Mount Intercooler",
+      "emissions",
+      "modification"
+    ]
+  },
+  {
+    "id": "Q3",
+    "category": "Exact Identifier Lookup",
+    "favored_architecture": "Hybrid RAG",
+    "query": "What does SKU-DP-DECAT-102 refer to?",
+    "expected_keywords": [
+      "SKU-DP-DECAT-102",
+      "downpipe",
+      "de-cat"
+    ]
+  },
+  {
+    "id": "Q4",
+    "category": "Exact Identifier Lookup",
+    "favored_architecture": "Hybrid RAG",
+    "query": "What is the latest guidance in TSB-2026-002?",
+    "expected_keywords": [
+      "TSB-2026-002",
+      "guidance"
+    ]
+  },
+  {
+    "id": "Q5",
+    "category": "Multi-hop Approval Rules",
+    "favored_architecture": "Agentic RAG",
+    "query": "A customer in the European Union wants to install SKU-ECU-STD-101. What approvals are required before the job can be completed?",
+    "expected_keywords": [
+      "European Union",
+      "SKU-ECU-STD-101",
+      "approvals",
+      "emissions"
+    ]
+  },
+  {
+    "id": "Q6",
+    "category": "Multi-step Action Procedure",
+    "favored_architecture": "Agentic RAG",
+    "query": "A customer declines to sign the emissions disclosure after requesting a standalone ECU install in the European Union. What should the technician do?",
+    "expected_keywords": [
+      "emissions disclosure",
+      "declines",
+      "technician",
+      "stop",
+      "refuse"
+    ]
+  }
+]
