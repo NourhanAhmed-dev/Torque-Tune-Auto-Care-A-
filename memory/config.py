@@ -13,7 +13,7 @@ MAX_SHORT_TERM_MESSAGES = 20
 # Router
 # ------------------------
 
-IMPORTANCE_THRESHOLD = 2
+IMPORTANCE_THRESHOLD = 5
 
 # ------------------------
 # Consolidation

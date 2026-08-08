@@ -1,3 +1,4 @@
+import datetime
 from pathlib import Path
 from dataclasses import asdict
 
@@ -115,3 +116,18 @@ class SemanticStore:
 
     def count(self):
         return len(self.get_all())
+
+    def update(self, fact_id: str, updates: dict) -> None:
+        """Update specific fields of a semantic fact (used by consolidation)."""
+        from datetime import datetime
+        facts = self.get_all()
+        for f in facts:
+            if f.get("fact_id") == fact_id:
+                f.update(updates)
+                if "updated_at" not in updates:
+                    f["updated_at"] = datetime.utcnow()
+                break
+        save_json(self.file_path, facts)
+
+    def deactivate(self, fact_id: str) -> None:
+        self.update(fact_id, {"active": False, "updated_at": datetime.utcnow()})
