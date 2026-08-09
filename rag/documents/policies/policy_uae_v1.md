@@ -1,5 +1,6 @@
 ---
 doc_id: policy_uae_v1
+active: true
 doc_type: policy
 jurisdiction: United Arab Emirates
 jurisdiction_code: UAE

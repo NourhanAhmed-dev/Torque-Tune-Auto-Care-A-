@@ -1,5 +1,6 @@
 ---
 doc_id: policy_uk_v2
+active: true
 doc_type: policy
 jurisdiction: United Kingdom
 jurisdiction_code: UK

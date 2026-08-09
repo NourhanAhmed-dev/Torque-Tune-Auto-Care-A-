@@ -1,0 +1,7 @@
+﻿Question ID,Category,Target Architecture,Tested Architecture,Status,Accuracy (%),Prompt Tokens,Completion Tokens,Total Tokens,Retrieval Latency (s),Gen/Plan Latency (s),Total Latency (s),Error Message
+Q1,Policy Lookup,Naive RAG,Naive RAG,SUCCESS,100.0,794,199,1613,1.29,4.876,6.166,
+Q2,Fact Verification,Naive RAG,Naive RAG,SUCCESS,100.0,719,48,1352,0.39,5.189,5.579,
+Q3,Exact Identifier Lookup,Hybrid RAG,Naive RAG,SUCCESS,66.7,486,52,883,0.981,2.966,3.947,
+Q4,Exact Identifier Lookup,Hybrid RAG,Naive RAG,SUCCESS,100.0,671,148,1340,0.589,3.555,4.144,
+Q5,Multi-hop Approval Rules,Agentic RAG,Naive RAG,SUCCESS,100.0,803,205,2077,0.432,6.758,7.191,
+Q6,Multi-step Action Procedure,Agentic RAG,Naive RAG,SUCCESS,20.0,887,61,1497,0.83,4.577,5.407,

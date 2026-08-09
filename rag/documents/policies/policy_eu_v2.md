@@ -1,5 +1,6 @@
 ---
 doc_id: policy_eu_v2
+active: true
 doc_type: policy
 jurisdiction: European Union
 jurisdiction_code: EU

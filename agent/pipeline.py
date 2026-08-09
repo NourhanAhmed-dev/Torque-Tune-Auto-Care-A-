@@ -18,6 +18,7 @@ RUBRIC MAP — one public method per concern:
 """
 from __future__ import annotations
 
+import asyncio
 import inspect
 from pathlib import Path
 
@@ -30,9 +31,8 @@ from memory.scratchpad import Scratchpad
 from memory.semantic_store import SemanticStore
 from memory.short_term import ShortTermMemory
 from rag.agentic_rag import AgenticRAG
-from rag.hybrid_rag import HybridRAG
 from rag.verifier import SelfRAGVerifier
-
+from rag.naive_rag import NaiveRAG
 # Shipped strategy — justified by context_eval/comparison_table.md
 SHIPPED_PRUNER = observation_masking
 PRUNE_KEEP_LAST_TOOL_OUTPUTS = 3
@@ -60,8 +60,8 @@ class SessionPipeline:
         self.episodic = EpisodicStore()
         self.semantic = SemanticStore()
         self.consolidator = ConsolidationEngine()
-        self.hybrid_rag = HybridRAG()          # default retrieval path
         self.agentic_rag = AgenticRAG()        # multi-part queries only
+        self.naive_rag = NaiveRAG()  # Default path, chosen by completed benchmark.
         self.verifier = SelfRAGVerifier()
         self._turns = 0
 
@@ -86,23 +86,56 @@ class SessionPipeline:
             if callable(fn):
                 fn(text)
                 return
+    def update_scope(self, values: dict) -> None:
+        """
+        Keep the active client/vehicle scope in the scratchpad.
+        Scope comes from MCP tool arguments/results and is used for safe recall.
+        """
+        aliases = {
+            "client_id": "client_id",
+            "customer_id": "client_id",
+            "vehicle_id": "vehicle_id",
+            "tech_id": "tech_id",
+            "technician_id": "tech_id",
+            "appointment_id": "appointment_id",
+        }
+
+        for incoming_key, scratchpad_key in aliases.items():
+            value = values.get(incoming_key)
+            if value is not None:
+                self.scratchpad.set_context(scratchpad_key, value)
 
     def scratch_snapshot(self) -> str:
-        for name in ("snapshot", "get_state", "to_dict", "render", "state"):
-            attr = getattr(self.scratchpad, name, None)
-            if callable(attr):
-                try:
-                    return str(attr())
-                except Exception:
-                    continue
-            if attr is not None:
-                return str(attr)
-        return ""
+        return self.scratchpad.render()
 
     # ── long-term recall (Self-RAG verified) ─────────────────────────────
     def recall(self, query: str) -> list:
-        candidates = self._recall_from(self.episodic, query) + self._recall_from(self.semantic, query)
-        return [m for m in candidates if self.verify(query, [m], _content_of(m))[0]]
+        scope = self.scratchpad.get_context()
+        client_id = scope.get("client_id")
+        vehicle_id = scope.get("vehicle_id")
+
+        episodic = self.episodic.recall(
+            query,
+            client_id=client_id,
+            vehicle_id=vehicle_id,
+            limit=5,
+        )
+        semantic = self.semantic.recall(
+            query,
+            client_id=client_id,
+            vehicle_id=vehicle_id,
+            limit=5,
+        )
+
+        candidates = episodic + semantic
+
+        # Keep only memories verified as relevant/supportable.
+        verified = [
+            memory for memory in candidates
+            if self.verify(query, [memory], _content_of(memory))[0]
+        ]
+
+        return verified[:5]
 
     # ── grounded retrieval ───────────────────────────────────────────────
     def needs_knowledge(self, query: str) -> bool:
@@ -110,11 +143,15 @@ class SessionPipeline:
         return any(h in q for h in _KNOWLEDGE_HINTS)
 
     async def retrieve(self, query: str) -> dict:
-        engine = self.agentic_rag if self._looks_multipart(query) else self.hybrid_rag
+        engine = self.agentic_rag if self._looks_multipart(query) else self.naive_rag
         retrieved, answer = await self._call_rag(engine, query)
         supported, critique = self.verify(query, retrieved, answer)
-        return {"grounded": supported, "answer": answer,
-                "sources": retrieved, "critique": critique}
+        return {
+            "grounded": supported,
+            "answer": answer,
+            "sources": retrieved,
+            "critique": critique,
+        }
 
     # ── context window management (shipped strategy) ─────────────────────
     def compose_context(self, user_message: str, recalled: list, kb: dict | None) -> list:
@@ -128,10 +165,20 @@ class SessionPipeline:
             blocks.append("RECALLED MEMORIES (verified):\n"
                           + "\n".join("- " + _content_of(m) for m in recalled))
         if kb and kb.get("grounded"):
-            blocks.append("KNOWLEDGE BASE (verified — cite it):\n" + kb["answer"])
+            source_text = "\n\n".join(
+                f"[{source.doc_id}]\n{source.text}"
+                for source in kb["sources"]
+            )
+            blocks.append(
+                "KNOWLEDGE BASE EVIDENCE (use only this evidence and cite document IDs):\n"
+                + source_text
+            )
         elif kb:
-            blocks.append("KNOWLEDGE BASE: NOT supported — say you are unsure, never invent. "
-                          "Critique: " + str(kb.get("critique")))
+            blocks.append(
+                "KNOWLEDGE BASE: retrieval was not verified. "
+                "Say you are unsure and do not invent facts. "
+                f"Reason: {kb.get('critique')}"
+            )
         scratch = self.scratch_snapshot()
         if scratch:
             blocks.append("SCRATCHPAD (active plan — never pruned):\n" + scratch)
@@ -205,15 +252,26 @@ class SessionPipeline:
 
     @staticmethod
     async def _call_rag(engine, query) -> tuple:
-        fn = (getattr(engine, "answer", None) or getattr(engine, "run", None)
-              or getattr(engine, "query", None))
-        res = fn(query)
+        fn = (
+            getattr(engine, "answer", None)
+            or getattr(engine, "run", None)
+            or getattr(engine, "query", None)
+        )
+
+        # RAG code currently calls the Gemini SDK synchronously.
+        # Move it to a worker thread so it does not freeze the MCP event loop.
+        res = await asyncio.to_thread(fn, query)
         if inspect.isawaitable(res):
             res = await res
+
         if isinstance(res, tuple) and len(res) == 2:
             return res
+
         retrieved = getattr(res, "retrieved", None) or (
-            res.get("retrieved") if isinstance(res, dict) else [])
+            res.get("retrieved") if isinstance(res, dict) else []
+        )
         answer = getattr(res, "answer", None) or (
-            res.get("answer") if isinstance(res, dict) else str(res))
+            res.get("answer") if isinstance(res, dict) else str(res)
+        )
+
         return retrieved or [], answer

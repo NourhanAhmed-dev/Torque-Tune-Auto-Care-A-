@@ -12,7 +12,8 @@ Fixes & Improvements Applied:
 """
 
 from __future__ import annotations
-
+import argparse
+from pathlib import Path
 import time
 import pandas as pd
 import numpy as np
@@ -86,7 +87,7 @@ def calculate_keyword_accuracy(answer: str, expected_keywords: list[str]) -> flo
 
 # 3. Benchmark Execution Loop
 
-def run_rag_benchmark():
+def run_rag_benchmark(selected_architectures: set[str] | None = None):
     print("=" * 85)
     print("STARTING RAG ARCHITECTURE BENCHMARK EVALUATION (Q1 - Q6)")
     print("=" * 85 + "\n")
@@ -115,17 +116,29 @@ def run_rag_benchmark():
     agentic_rag = AgenticRAG(
     retriever=hybrid_retriever,
     top_k=3,
-    max_iterations=3,
+    max_iterations=2,
 )
     architectures = {
         "Naive RAG": naive_rag,
         "Hybrid RAG": hybrid_rag,
         "Agentic RAG": agentic_rag,
     }
+    if selected_architectures:
+        architectures = {
+            name: instance
+            for name, instance in architectures.items()
+            if name in selected_architectures
+    }
+
+    if not architectures:
+        raise ValueError("No valid architecture selected.")
 
     benchmark_results = []
+    quota_exhausted = False
 
     for q_item in TEST_QUESTIONS:
+        if quota_exhausted:
+            break
         q_id = q_item["id"]
         q_cat = q_item["category"]
         query_str = q_item["query"]
@@ -137,7 +150,6 @@ def run_rag_benchmark():
 
         for arch_name, arch_instance in architectures.items():
             print(f"   ► Running {arch_name}...", end=" ", flush=True)
-
             try:
                 # Execute answer generation
                 res = arch_instance.answer(query_str)
@@ -191,6 +203,10 @@ def run_rag_benchmark():
                     "Total Latency (s)": None,
                     "Error Message": str(e),
                 })
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    print("Quota reached; stopping this batch to preserve the remaining questions.")
+                    quota_exhausted = True
+                    break
 
         print("-" * 85)
 
@@ -200,7 +216,19 @@ def run_rag_benchmark():
     # -----------------------------------------------------------------
     # Save Detailed Table to CSV
     # -----------------------------------------------------------------
-    csv_filename = "architecture_benchmark.csv"
+    label = "all"
+
+    if selected_architectures == {"Naive RAG"}:
+        label = "naive"
+    elif selected_architectures == {"Hybrid RAG"}:
+        label = "hybrid"
+    elif selected_architectures == {"Agentic RAG"}:
+        label = "agentic"
+
+    output_dir = Path("retrieval_eval/results")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    csv_filename = output_dir / f"architecture_benchmark_{label}.csv"
     df.to_csv(csv_filename, index=False, encoding="utf-8-sig")
     print(f"\n Full detailed benchmark saved to: '{csv_filename}'")
 
@@ -265,4 +293,19 @@ def run_rag_benchmark():
 
 
 if __name__ == "__main__":
-    run_rag_benchmark()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--architecture",
+        choices=["naive", "hybrid", "agentic", "all"],
+        default="all",
+    )
+    args = parser.parse_args()
+
+    mapping = {
+        "naive": {"Naive RAG"},
+        "hybrid": {"Hybrid RAG"},
+        "agentic": {"Agentic RAG"},
+        "all": None,
+    }
+
+    run_rag_benchmark(mapping[args.architecture])

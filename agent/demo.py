@@ -195,12 +195,12 @@ def s13_context_strategies():
 async def s14_retrieval(agent):
     _section("14) RETRIEVAL ARCHITECTURES: SAME QUESTION, THREE WAYS")
     q = "What does TSB-2026-002 say about carbon buildup on EcoBoost 2.3 intake valves?"
-    try:
-        from rag.naive_rag import NaiveRAG
-        naive = NaiveRAG()
-    except Exception:
-        from rag import naive_rag as naive
-    for label, engine in (("Naive", naive), ("Hybrid", agent.memory.hybrid_rag),
+    from rag.hybrid_rag import HybridRAG
+    from rag.naive_rag import NaiveRAG
+
+    naive = NaiveRAG()
+    hybrid = HybridRAG()
+    for label, engine in (("Naive", naive), ("Hybrid", hybrid),
                           ("Agentic", agent.memory.agentic_rag)):
         try:
             print(f"{label} RAG:\n  ", _format_rag(await _answer(engine, q)))

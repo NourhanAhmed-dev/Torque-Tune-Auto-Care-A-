@@ -1,5 +1,6 @@
 ---
 doc_id: policy_us_ca_v2
+active: true
 doc_type: policy
 jurisdiction: United States - California
 jurisdiction_code: US-CA

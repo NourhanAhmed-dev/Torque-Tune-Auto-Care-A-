@@ -19,15 +19,14 @@ class VectorStore:
     def __init__(self):
         """Create or load the persistent Chroma database."""
 
-        self.client = chromadb.PersistentClient(
-            path=str(cfg.CHROMA_DB_DIR)
-        )
+        self.client = chromadb.PersistentClient(path=str(cfg.CHROMA_DB_DIR))
 
         self.collection = self.client.get_or_create_collection(
             name=cfg.COLLECTION_NAME,
             metadata={
-                "description": "Torque Tune Knowledge Base"
-            }
+                "description": "Torque Tune Knowledge Base",
+                "hnsw:space": "cosine",
+            },
         )
 
     # ----------------------------------------------------
@@ -54,9 +53,7 @@ class VectorStore:
         """
 
         if len(chunks) != len(embeddings):
-            raise ValueError(
-                "Number of chunks and embeddings must match."
-            )
+            raise ValueError("Number of chunks and embeddings must match.")
 
         ids = []
         documents = []
@@ -65,9 +62,7 @@ class VectorStore:
 
         for chunk, vector in zip(chunks, embeddings):
 
-            ids.append(
-                f"{chunk.doc_id}_{chunk.chunk_index}"
-            )
+            ids.append(f"{chunk.doc_id}_{chunk.chunk_index}")
 
             documents.append(chunk.text)
 
@@ -143,6 +138,4 @@ class VectorStore:
         except Exception:
             pass
 
-        self.collection = self.client.get_or_create_collection(
-            name=cfg.COLLECTION_NAME
-    )
+        self.collection = self.client.get_or_create_collection(name=cfg.COLLECTION_NAME)

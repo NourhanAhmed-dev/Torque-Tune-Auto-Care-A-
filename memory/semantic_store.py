@@ -6,6 +6,8 @@ from .utils import load_json, save_json
 from .models import SemanticMemory
 from .config import SEMANTIC_FILE
 
+import re
+from datetime import datetime, timezone
 
 class SemanticStore:
     """
@@ -131,3 +133,61 @@ class SemanticStore:
 
     def deactivate(self, fact_id: str) -> None:
         self.update(fact_id, {"active": False, "updated_at": datetime.utcnow()})
+
+    @staticmethod
+    def _tokens(text: str) -> set[str]:
+        return {
+            token.lower()
+            for token in re.findall(r"[a-zA-Z0-9_-]{3,}", text or "")
+        }
+
+    @staticmethod
+    def _is_expired(memory: dict) -> bool:
+        raw = memory.get("expires_at")
+        if not raw:
+            return False
+
+        try:
+            expiry = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+            if expiry.tzinfo is None:
+                expiry = expiry.replace(tzinfo=timezone.utc)
+            return expiry <= datetime.now(timezone.utc)
+        except ValueError:
+            # Invalid expiry should never be treated as an active fact.
+            return True
+
+    def recall(
+        self,
+        query: str,
+        *,
+        client_id=None,
+        vehicle_id=None,
+        limit: int = 5,
+    ) -> list[dict]:
+        """
+        Retrieve active, non-expired facts only.
+        Scope is mandatory to avoid cross-client memory leakage.
+        """
+        if client_id is None and vehicle_id is None:
+            return []
+
+        query_tokens = self._tokens(query)
+        candidates = []
+
+        for fact in self.get_all():
+            if not fact.get("active", True):
+                continue
+            if self._is_expired(fact):
+                continue
+            if client_id is not None and fact.get("client_id") != client_id:
+                continue
+            if vehicle_id is not None and fact.get("vehicle_id") != vehicle_id:
+                continue
+
+            overlap = len(query_tokens & self._tokens(fact.get("fact", "")))
+            version = int(fact.get("version", 1))
+            score = (overlap * 10) + version
+            candidates.append((score, fact))
+
+        candidates.sort(key=lambda item: item[0], reverse=True)
+        return [fact for _, fact in candidates[:limit]]

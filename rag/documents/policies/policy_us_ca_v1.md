@@ -1,5 +1,6 @@
 ---
 doc_id: policy_us_ca_v1
+active: false
 doc_type: policy
 jurisdiction: United States - California
 jurisdiction_code: US-CA
@@ -20,4 +21,3 @@ Applies to any tuning modification logged with category `emissions_affecting` (E
 2. Before the modification is logged as performed, the assigned technician must give an explicit, recorded confirmation that the client was verbally informed of the warranty and compliance impact.
 3. Cosmetic and performance modifications that do not affect emissions hardware do not require this sign-off.
 4. If sign-off is declined, log the modification as `awaiting_signoff` and escalate to a shift lead.
-  

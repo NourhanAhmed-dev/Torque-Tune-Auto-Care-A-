@@ -51,7 +51,7 @@ Critical service procedures, torque specs, and compliance policies live in a 40-
 |---|---|---|
 | **Short-term buffer + scratchpad** | `memory/short_term.py`, `memory/scratchpad.py` | Rolling buffer, pruned; scratchpad survives pruning |
 | **Context window — 4 strategies** | `context_eval/{sliding_window,observation_masking,recursive_summarization,zone_pruning}.py` | Pure `prune(transcript, **cfg) -> transcript` |
-| **Promote-or-drop routing** | `memory/router.py` → `MemoryRouter.route()` | Fires on overflow only → forget/episodic; never writes semantic; reasoning in `memory/storage/routing_log.jsonl` |
+| **Promote-or-drop routing** | `memory/router.py` → `MemoryRouter.route()` | Fires on overflow only → forget/episodic; never writes semantic; reasoning in `memory/logs/router.log` |
 | **Consolidation layer** | `memory/consolidation.py` → `ConsolidationEngine.consolidate()` + `_supersede()` | Periodic pass, never at write time; versioned conflict resolution |
 | **Vector database** | `rag/vector_store.py` | HNSW index + metadata payload store + pre-filter via metadata index |
 | **Naive / Hybrid / Agentic RAG** | `rag/{naive_rag,hybrid_rag,agentic_rag}.py` | Each exposes `.answer(query)` |
@@ -85,33 +85,27 @@ Benchmarked 4 strategies against a **frozen** suite of 10 synthetic long-context
 
 ### Table 2 — Retrieval Architectures (15 points)
 
-| Architecture | Accuracy (mean %) | Tokens/query (mean) | Latency/query (mean s) |
-|---|---|---|---|
-| Agentic RAG | 100.0 | 1424.0 | 21.026 |
-| Hybrid RAG | 88.9 | 1355.3 | 6.193 |
-| Naive RAG | 88.34 | 1495.4 | 5.682 |
+| Architecture | Completed runs | Accuracy (mean %) | Tokens/query (mean) | Latency/query (mean s) | Evaluation status |
+|---|---:|---:|---:|---:|---|
+| **Naive RAG** | 6/6 | **81.12** | **1460.3** | 5.406 | Complete |
+| Hybrid RAG | 6/6 | 81.12 | 1478.8 | **5.321** | Complete |
+| Agentic RAG | 2/6 | 100.0* | 1397.5* | 13.801* | Incomplete - excluded from decision |
 
-> **Honesty note:** Out of 18 expected runs (6 questions × 3 architectures), 
-> 11 succeeded before Gemini Free Tier exhaustion (20 req/day on gemini-3.6-flash) 
-> and transient 503 UNAVAILABLE (high demand). The benchmark script preserved 
-> structural integrity — FAILED rows are logged in 
-> `retrieval_eval/architecture_benchmark.csv`. The automated picker defaulted 
-> to Agentic RAG on the truncated successful sample, but our **shipping decision 
-> is based on per-question architecture fit**, not the biased aggregate.
+\* Agentic RAG was not included in the shipping decision because only 2 of 6
+fixed evaluation questions completed. The Gemini free-tier project enforced a
+5 generate-requests-per-minute limit; Agentic RAG makes multiple generation
+requests per question for planning and final answer generation. Continuing
+would have produced an incomplete and biased comparison, so the run was
+stopped rather than reporting partial results as a full benchmark.
 
-**Shipped:** Hybrid search as default; Agentic RAG reserved for decomposition-shaped 
-queries (routed by `_looks_multipart()` in `agent/pipeline.py`).
+**Shipped default: Naive RAG.**
 
-**Justification (per-question fit, visible in the detailed CSV):**
-- **Naive wins Q1/Q2** (policy lookups, fact verification): semantic search 
-  is sufficient, no need to pay for BM25 fusion or multi-hop.
-- **Hybrid wins Q3/Q4** (exact identifiers: `SKU-DP-DECAT-102`, `TSB-2026-002`): 
-  keyword identifiers don't embed distinctively; BM25 recovers what vectors 
-  miss. Hybrid is our default because citation questions dominate live call volume.
-- **Agentic wins Q5/Q6** (multi-hop: EU + SKU + approvals; declined disclosure + 
-  ECU + EU): requires decomposition into 2+ retrieval rounds. Reserved for 
-  decomposition-shaped queries only — the benchmark confirms its 3× latency cost 
-  (21s vs 6s) is only justified for the rare multi-part case.
+Naive and Hybrid RAG achieved the same measured accuracy (81.12%) on the same
+six fixed questions. Naive used fewer tokens per query (1460.3 vs 1478.8).
+Hybrid's latency advantage was only 0.085 seconds, which is too small in this
+six-question sample to justify its additional retrieval complexity. Agentic
+RAG remains implemented and demonstrated, but its incomplete benchmark was
+not used for the production decision.
 ---
 
 ## Part IV: Memory System Details
@@ -123,7 +117,7 @@ queries (routed by `_looks_multipart()` in `agent/pipeline.py`).
 ### Promote-or-drop routing (forget/episodic only)
 - `MemoryRouter.route(message)` fires on buffer overflow. Returns `EpisodicMemory` or `None` (forget).
 - **Does NOT write to semantic memory** — only the periodic consolidation pass does.
-- Every decision logged to `memory/storage/routing_log.jsonl` with the importance score and reason.
+- Every decision logged to `memory/logs/router.log` with the importance score and reason.
 
 ### Consolidation layer (periodic, separate)
 - `ConsolidationEngine.consolidate()` runs every 10 turns (configurable).
@@ -161,7 +155,7 @@ queries (routed by `_looks_multipart()` in `agent/pipeline.py`).
 7. **Progress tracking** on service report generation
 8. **Resources + prompts** verification
 9. **Gemini reasoning loop** — real tool calls, grounded answer
-10. **Memory: item survives promote-or-drop** — radiator note routed to episodic (see `memory/storage/routing_log.jsonl`)
+10. **Memory: item survives promote-or-drop** — radiator note routed to episodic (see `memory/logs/router.log`)
 11. **Consolidation: real contradiction resolved** — 5W-30 vs 0W-20 oil, versioned and dated
 12. **Self-RAG: grounded pass vs unsupported catch** — low-confidence flag fires on out-of-corpus question
 13. **Context management: all 4 strategies on frozen suite** — table printed
@@ -180,20 +174,20 @@ python -m venv .venv
 # source .venv/bin/activate             # macOS/Linux
 python -m pip install -r requirements.txt
 
-# 2. Build the database (Session 1 tables, reused in Session 3)
-python db/init_db.py
-
-# 3. Secrets (NEVER commit .env — it's in .gitignore)
+# 2. Secrets (NEVER commit .env — it's in .gitignore)
 # Create .env with:
 #   GEMINI_API_KEY=your_key_here
 
-# 4. Run the MCP server (pick one transport)
+# 3. Run the MCP server (pick one transport)
 python -m mcp_server.run_stdio          # local dev
 python -m mcp_server.run_http           # deploy on http://localhost:8000/mcp
 
-# 5. Run the demo (covers all concerns from both labs)
+# 4. Run the demo (covers all concerns from both labs)
 python -m agent.demo --auto
 
-# 6. Run evaluations
+# 5. Build the vector index, then run evaluations
+python -m rag.ingest
 python -m context_eval.evaluate         # context window table (~5 min)
-python -m retrieval_eval.evaluate       # retrieval architecture table
+python -m rag.evaluation --architecture naive
+python -m rag.evaluation --architecture hybrid
+# Agentic RAG is run separately because the free-tier request limit is low.

@@ -1,5 +1,6 @@
 ---
 doc_id: policy_egy_v1
+active: true
 doc_type: policy
 jurisdiction: Egypt
 jurisdiction_code: EGY
