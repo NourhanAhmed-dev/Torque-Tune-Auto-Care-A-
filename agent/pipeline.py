@@ -152,6 +152,7 @@ class SessionPipeline:
             "sources": retrieved,
             "critique": critique,
         }
+    
 
     # ── context window management (shipped strategy) ─────────────────────
     def compose_context(self, user_message: str, recalled: list, kb: dict | None) -> list:
