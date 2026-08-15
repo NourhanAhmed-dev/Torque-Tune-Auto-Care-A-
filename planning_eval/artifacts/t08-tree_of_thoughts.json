@@ -1,0 +1,12 @@
+{
+  "case": "t08",
+  "method": "tree_of_thoughts",
+  "decision": null,
+  "grounded_success": false,
+  "env_success": false,
+  "calls": 9,
+  "tokens": 4736,
+  "latency": 49.11,
+  "cost": 0.00237,
+  "final_plan": "Proceed to ESCALATE the request to the shift-lead, citing the high-risk nature of the tuning job and the lack of documented verification for emissions compliance, requiring a secondary sign-off before any release."
+}

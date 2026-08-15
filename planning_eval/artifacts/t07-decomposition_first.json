@@ -1,0 +1,12 @@
+{
+  "case": "t07",
+  "method": "decomposition_first",
+  "decision": "HOLD",
+  "grounded_success": true,
+  "env_success": true,
+  "calls": 7,
+  "tokens": 2984,
+  "latency": 23.44,
+  "cost": 0.00149,
+  "final_plan": "**Decision: HOLD**\n\nThe remap for vehicle 3 (Client 2) cannot be closed today. Per compliance requirements, an emissions-affecting modification cannot be released without the necessary disclosure paperwork.\n\n**Status and Compliance Logic:**\n*   **Verified Data:** Appointment 3 is confirmed for vehicle 3 (Client 2) with technician 2. The job is technically ready, but the missing disclosure paperwork creates a compliance blocker.\n*   **Risk Mitigation:** Proceeding without the required documentation violates safety and regulatory protocols. Therefore, the job is placed on **HOLD** until the missing items are provided.\n\n**Next Actions:**\n1.  **Notify Shift Lead:** Inform the shift lead that the remap is on HOLD due to missing disclosure paperwork, citing the requirement to maintain compliance for emissions-affecting modifications.\n2.  **Request Documentation:** Contact the project team to immediately provide the specific missing disclosure checklist.\n3.  **Update Status:** Once the documentation is received and verified against the property address and jurisdiction requirements, the status will be re-evaluated for release. No further action will be taken on the remap until the paperwork is secured."
+}

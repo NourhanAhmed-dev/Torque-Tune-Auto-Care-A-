@@ -1,0 +1,12 @@
+{
+  "case": "t03",
+  "method": "lats",
+  "decision": "HOLD",
+  "grounded_success": true,
+  "env_success": false,
+  "calls": 5,
+  "tokens": 2293,
+  "latency": 36.01,
+  "cost": 0.00115,
+  "final_plan": "Decision: HOLD. I am performing a mandatory validation of the torque calibration data against the manufacturer's safety threshold and confirming the technician's current certification status before authorizing the release."
+}

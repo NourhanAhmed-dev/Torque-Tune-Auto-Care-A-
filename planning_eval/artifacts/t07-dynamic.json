@@ -1,0 +1,12 @@
+{
+  "case": "t07",
+  "method": "dynamic",
+  "decision": "ESCALATE",
+  "grounded_success": true,
+  "env_success": true,
+  "calls": 8,
+  "tokens": 3377,
+  "latency": 31.84,
+  "cost": 0.00169,
+  "final_plan": "**Action:** \n1. Sent the following email to the client:\n\n\"Subject: URGENT: Missing Disclosure Paperwork - Remap Request [Account/Reference Number]\n\nHi [Client Name],\n\nI am currently finalizing your remap request and noticed that we are still missing the required disclosure paperwork. To ensure we can meet our end-of-day deadline for closing this file, could you please complete and return the attached documents as soon as possible? \n\nPlease let me know if you have any questions or need assistance with the forms. Thank you for your prompt attention to this matter.\"\n\n2. Attached the necessary disclosure forms to the email.\n\n**Status:** Monitoring for a prompt return. I will keep the shift lead updated on the status of the file and escalate if the documents are not received within the next few hours to ensure the deadline is met."
+}

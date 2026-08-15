@@ -1,0 +1,12 @@
+{
+  "case": "t02",
+  "method": "lats",
+  "decision": "HOLD",
+  "grounded_success": false,
+  "env_success": true,
+  "calls": 4,
+  "tokens": 1700,
+  "latency": 12.79,
+  "cost": 0.00085,
+  "final_plan": "The technician requires a final count of completed evidence records before confirming the release. Decision: HOLD. Verify evidence completeness before proceeding with the release."
+}

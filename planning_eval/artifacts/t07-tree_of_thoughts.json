@@ -1,0 +1,12 @@
+{
+  "case": "t07",
+  "method": "tree_of_thoughts",
+  "decision": "ESCALATE",
+  "grounded_success": true,
+  "env_success": true,
+  "calls": 9,
+  "tokens": 4787,
+  "latency": 56.92,
+  "cost": 0.00239,
+  "final_plan": "ESCALATE: Since the shift lead is pressuring for a same-day closure despite missing mandatory compliance documentation, escalate the matter to management to resolve the conflict between operational deadlines and legal requirements."
+}
