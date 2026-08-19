@@ -100,3 +100,73 @@ CREATE TABLE IF NOT EXISTS routing_log (
     reason TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ============================================================
+-- STATE GRAPH RUNS
+CREATE TABLE IF NOT EXISTS state_graph_runs (
+    run_id TEXT PRIMARY KEY,
+    graph_type TEXT NOT NULL,
+    status TEXT NOT NULL,
+    current_state TEXT,
+    vehicle_id INTEGER,
+    client_id INTEGER,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (vehicle_id)
+        REFERENCES vehicles(vehicle_id),
+    FOREIGN KEY (client_id)
+        REFERENCES clients(client_id)
+);
+
+
+-- STATE GRAPH CHECKPOINTS
+CREATE TABLE IF NOT EXISTS state_checkpoints (
+    checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    state_name TEXT NOT NULL,
+    state_data TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (run_id)
+        REFERENCES state_graph_runs(run_id)
+        ON DELETE CASCADE
+);
+
+
+-- HUMAN-IN-THE-LOOP TASKS
+CREATE TABLE IF NOT EXISTS hitl_tasks (
+    task_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    state TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    payload TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    admin_id TEXT,
+    decision TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TEXT,
+    FOREIGN KEY (run_id)
+        REFERENCES state_graph_runs(run_id)
+        ON DELETE CASCADE
+);
+
+
+-- FAILURE / RECOVERY TICKETS
+CREATE TABLE IF NOT EXISTS failure_tickets (
+    ticket_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    state TEXT NOT NULL,
+    error_type TEXT NOT NULL,
+    error_message TEXT NOT NULL,
+    checkpoint_id INTEGER,
+    status TEXT NOT NULL DEFAULT 'open',
+    assigned_to TEXT,
+    resolution TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TEXT,
+    FOREIGN KEY (run_id)
+        REFERENCES state_graph_runs(run_id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (checkpoint_id)
+        REFERENCES state_checkpoints(checkpoint_id)
+        ON DELETE SET NULL
+);
