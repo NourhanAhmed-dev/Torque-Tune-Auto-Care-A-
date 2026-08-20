@@ -121,11 +121,16 @@ CREATE TABLE IF NOT EXISTS state_graph_runs (
 
 -- STATE GRAPH CHECKPOINTS
 CREATE TABLE IF NOT EXISTS state_checkpoints (
-    checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    checkpoint_id TEXT PRIMARY KEY,
     run_id TEXT NOT NULL,
-    state_name TEXT NOT NULL,
-    state_data TEXT NOT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    graph_name TEXT NOT NULL,
+    node_name TEXT NOT NULL,
+    step_index INTEGER NOT NULL,
+    state_json TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    metadata_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+
     FOREIGN KEY (run_id)
         REFERENCES state_graph_runs(run_id)
         ON DELETE CASCADE
@@ -136,6 +141,7 @@ CREATE TABLE IF NOT EXISTS state_checkpoints (
 CREATE TABLE IF NOT EXISTS hitl_tasks (
     task_id INTEGER PRIMARY KEY AUTOINCREMENT,
     run_id TEXT NOT NULL,
+    checkpoint_id TEXT ,
     state TEXT NOT NULL,
     reason TEXT NOT NULL,
     payload TEXT,
@@ -157,7 +163,7 @@ CREATE TABLE IF NOT EXISTS failure_tickets (
     state TEXT NOT NULL,
     error_type TEXT NOT NULL,
     error_message TEXT NOT NULL,
-    checkpoint_id INTEGER,
+    checkpoint_id TEXT,
     status TEXT NOT NULL DEFAULT 'open',
     assigned_to TEXT,
     resolution TEXT,
@@ -168,5 +174,73 @@ CREATE TABLE IF NOT EXISTS failure_tickets (
         ON DELETE CASCADE,
     FOREIGN KEY (checkpoint_id)
         REFERENCES state_checkpoints(checkpoint_id)
+        ON DELETE SET NULL
+);
+
+--  Multi-Supplier Parts Sourcing (problem 1)
+
+CREATE TABLE supplier_orders (
+    order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    supplier TEXT NOT NULL,
+    status TEXT NOT NULL, -- pending - ordered - backorder - shipped - delivered - cancelled - failed
+    quoted_price REAL NOT NULL,
+    final_price REAL,
+    expected_delivery TEXT,
+    actual_delivery TEXT,
+    api_attempts INTEGER DEFAULT 0,
+    last_api_error TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (run_id)
+        REFERENCES state_graph_runs(run_id)
+        ON DELETE CASCADE
+);
+
+CREATE TABLE supplier_order_parts (
+    order_id INTEGER NOT NULL,
+    part_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 1,
+    status TEXT NOT NULL,
+    substitute_part TEXT,
+    warranty_impact TEXT,
+    PRIMARY KEY (order_id, part_id),
+    FOREIGN KEY (order_id)
+        REFERENCES supplier_orders(order_id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (part_id)
+        REFERENCES parts_catalog(part_id)
+);
+
+CREATE TABLE installation_steps (
+    step_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    part_id INTEGER,
+    step_order INTEGER NOT NULL,
+    description TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',-- pending - in_progress - completed - failed
+    dependencies TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (run_id)
+        REFERENCES state_graph_runs(run_id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (part_id)
+        REFERENCES parts_catalog(part_id)
+);
+
+CREATE TABLE supplier_events (
+    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    order_id INTEGER,
+    event_type TEXT NOT NULL,-- shipment_confirmed | delivery_confirmed | backorder | cancelled | price_changed | substitute_offered
+    payload TEXT,
+    status TEXT NOT NULL DEFAULT 'received',-- received - processed - failed
+    received_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    processed_at TEXT,
+    FOREIGN KEY (run_id)
+        REFERENCES state_graph_runs(run_id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (order_id)
+        REFERENCES supplier_orders(order_id)
         ON DELETE SET NULL
 );
