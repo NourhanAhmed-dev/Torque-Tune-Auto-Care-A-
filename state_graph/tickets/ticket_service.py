@@ -33,7 +33,6 @@ class TicketService:
         node_name: str,
         error: Exception,
     ) -> dict[str, Any]:
-        db.init_db()
         now = _now()
  
         if self.platform_tasks is not None:
@@ -96,7 +95,6 @@ class TicketService:
         return self.get(ticket_id)
  
     def get(self, ticket_id: int) -> dict[str, Any]:
-        db.init_db()
         with db.connect() as conn:
             row = conn.execute(
                 "SELECT * FROM failure_tickets WHERE ticket_id = ?", (ticket_id,)

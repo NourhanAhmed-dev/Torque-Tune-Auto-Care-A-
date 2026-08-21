@@ -244,3 +244,26 @@ CREATE TABLE supplier_events (
         REFERENCES supplier_orders(order_id)
         ON DELETE SET NULL
 );
+
+CREATE TABLE build_presets (
+    preset_key TEXT PRIMARY KEY,
+    display_name TEXT NOT NULL
+);
+PRAGMA foreign_keys = OFF;
+BEGIN TRANSACTION;
+DROP TABLE IF EXISTS build_part_requirements;
+CREATE TABLE build_part_requirements (
+    preset_key TEXT NOT NULL,
+    part_id INTEGER NOT NULL,
+    part_name TEXT NOT NULL,
+    supplier TEXT NOT NULL,
+    price REAL NOT NULL DEFAULT 0,
+    quantity INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (preset_key, part_id),
+    FOREIGN KEY (preset_key) REFERENCES build_presets(preset_key) ON DELETE CASCADE
+);
+ 
+CREATE INDEX idx_build_part_requirements_preset
+    ON build_part_requirements(preset_key);
+COMMIT;
+PRAGMA foreign_keys = ON;

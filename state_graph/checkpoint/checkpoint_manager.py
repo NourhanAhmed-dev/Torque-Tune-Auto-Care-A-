@@ -25,14 +25,13 @@ def _wrap(state: dict[str, Any], reason: str, metadata: dict[str, Any]) -> dict[
  
  
 def _unwrap(row) -> Checkpoint:
-    envelope = json.loads(row["state_data"])
     return Checkpoint(
         checkpoint_id=row["checkpoint_id"],
         run_id=row["run_id"],
-        node_name=row["state_name"],
-        state=envelope.get("state", {}),
-        reason=envelope.get("reason", ""),
-        metadata=envelope.get("metadata", {}),
+        node_name=row["node_name"],
+        state=json.loads(row["state_json"]),
+        reason=row["reason"],
+        metadata=json.loads(row["metadata_json"]),
         created_at=row["created_at"],
     )
  
@@ -66,21 +65,22 @@ class CheckpointManager:
         reason: str,
         metadata: dict[str, Any],
     ) -> Checkpoint:
-        # The FK on state_checkpoints.run_id requires this row to exist
-        # first. Idempotent: no-ops if start_run() already created it.
         runs.ensure_run(run_id, graph_type=self.graph_type)
  
         checkpoint_id = persistence.insert(
             run_id=run_id,
-            state_name=node_name,
-            state_data=_wrap(state, reason, metadata),
+        graph_name=self.graph_type,
+        node_name=node_name,
+        state=state,
+        reason=reason,
+        metadata=metadata,
         )
         runs.touch_run(run_id, status="running", current_state=node_name)
  
         row = persistence.get_by_id(checkpoint_id)
         return _unwrap(row)
  
-    def load(self, checkpoint_id: int) -> Checkpoint:
+    def load(self, checkpoint_id: str) -> Checkpoint:
         row = persistence.get_by_id(checkpoint_id)
         if row is None:
             raise KeyError(f"unknown checkpoint: {checkpoint_id}")

@@ -33,7 +33,6 @@ class ApprovalService:
         `state` column — same convention as state_checkpoints.state_name,
         just named `state` in this table per the adopted schema."""
  
-        db.init_db()
         created_at = _now()
  
         platform_task_id = None
@@ -89,7 +88,6 @@ class ApprovalService:
         return self.get_request(request_id)
  
     def get_request(self, request_id: int) -> dict[str, Any]:
-        db.init_db()
         with db.connect() as conn:
             row = conn.execute(
                 """SELECT task_id, run_id, checkpoint_id, state, reason, payload,
