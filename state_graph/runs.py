@@ -5,10 +5,10 @@ before anything else can be inserted. ensure_run() makes that a
 non-event for callers: create on first use, no-op after.
 """
 from __future__ import annotations
- 
+
 from state_graph import db
- 
- 
+
+
 def ensure_run(
     run_id: str,
     *,
@@ -24,8 +24,8 @@ def ensure_run(
                ON CONFLICT(run_id) DO NOTHING""",
             (run_id, graph_type, vehicle_id, client_id),
         )
- 
- 
+
+
 def touch_run(run_id: str, *, status: str | None = None, current_state: str | None = None) -> None:
     with db.connect() as conn:
         if status is not None and current_state is not None:
@@ -45,8 +45,8 @@ def touch_run(run_id: str, *, status: str | None = None, current_state: str | No
                 "UPDATE state_graph_runs SET current_state = ?, updated_at = CURRENT_TIMESTAMP WHERE run_id = ?",
                 (current_state, run_id),
             )
- 
- 
+
+
 def get_run(run_id: str):
     db.init_db()
     with db.connect() as conn:

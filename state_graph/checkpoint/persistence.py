@@ -100,3 +100,8 @@ def list_for_run(run_id: str) -> list:
             """,
             (run_id,),
         ).fetchall()
+
+def delete_for_run(run_id: str) -> None:
+    with db.connect() as conn:
+        conn.execute("DELETE FROM state_checkpoints WHERE run_id = ?", (run_id,))
+        conn.commit()

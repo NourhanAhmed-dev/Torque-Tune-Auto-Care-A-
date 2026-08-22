@@ -1,30 +1,24 @@
-"""CheckpointManager — the concrete CheckpointStore, backed by the real
-state_checkpoints table (and, transitively, state_graph_runs — a
-checkpoint can't exist without its run existing first, because the FK
-is actually enforced).
- 
-state_checkpoints has no `reason`/`metadata` columns. Rather than alter
-the adopted schema, this class wraps them into state_data as an
-envelope: {"state": <the real state dict>, "reason": ..., "metadata":
-...}. load()/get_latest() unwrap the same envelope on the way out, so
-callers of .save()/.load() never see the wrapping — they still get a
-Checkpoint with .state / .reason / .metadata as separate fields.
+"""CheckpointManager — the concrete CheckpointStore.
+
+Backed by the real state_checkpoints table and state_graph_runs.
+
+The database stores the Graph 1 state together with checkpoint metadata.
+This class provides the CheckpointStore interface used by the state graph.
 """
+
 from __future__ import annotations
- 
+
 import json
 from typing import Any
- 
+
 from state_graph import runs
 from state_graph.checkpoint import persistence
 from state_graph.contracts import Checkpoint
- 
- 
-def _wrap(state: dict[str, Any], reason: str, metadata: dict[str, Any]) -> dict[str, Any]:
-    return {"state": state, "reason": reason, "metadata": metadata}
- 
- 
+
+
 def _unwrap(row) -> Checkpoint:
+    """Convert a persistence row into a Checkpoint object."""
+
     return Checkpoint(
         checkpoint_id=row["checkpoint_id"],
         run_id=row["run_id"],
@@ -34,28 +28,30 @@ def _unwrap(row) -> Checkpoint:
         metadata=json.loads(row["metadata_json"]),
         created_at=row["created_at"],
     )
- 
- 
+
+
 class CheckpointManager:
-    """Satisfies contracts.CheckpointStore. One instance per graph type
-    (repair / tuning / warranty, ...) — graph_type is what gets written
-    into state_graph_runs.graph_type the first time a run is seen."""
- 
+    """Concrete checkpoint manager for a single graph type."""
+
     def __init__(self, *, graph_type: str) -> None:
         self.graph_type = graph_type
- 
+
     def start_run(
-        self, run_id: str, *, vehicle_id: int | None = None, client_id: int | None = None
+        self,
+        run_id: str,
+        *,
+        vehicle_id: int | None = None,
+        client_id: int | None = None,
     ) -> None:
-        """Optional explicit call to register vehicle_id/client_id up
-        front. Not required — save() will register the run anyway (with
-        NULL vehicle_id/client_id) the first time it's called for a new
-        run_id — but calling this first gets the FK-linked context into
-        state_graph_runs from the start."""
+        """Register a graph run before checkpoints are created."""
+
         runs.ensure_run(
-            run_id, graph_type=self.graph_type, vehicle_id=vehicle_id, client_id=client_id
+            run_id,
+            graph_type=self.graph_type,
+            vehicle_id=vehicle_id,
+            client_id=client_id,
         )
- 
+
     def save(
         self,
         *,
@@ -65,34 +61,111 @@ class CheckpointManager:
         reason: str,
         metadata: dict[str, Any],
     ) -> Checkpoint:
-        runs.ensure_run(run_id, graph_type=self.graph_type)
- 
+        """Save one checkpoint and return the created Checkpoint."""
+
+        runs.ensure_run(
+            run_id,
+            graph_type=self.graph_type,
+        )
+
         checkpoint_id = persistence.insert(
             run_id=run_id,
-        graph_name=self.graph_type,
-        node_name=node_name,
-        state=state,
-        reason=reason,
-        metadata=metadata,
+            graph_name=self.graph_type,
+            node_name=node_name,
+            state=state,
+            reason=reason,
+            metadata=metadata,
         )
-        runs.touch_run(run_id, status="running", current_state=node_name)
- 
+
+        runs.touch_run(
+            run_id,
+            status="running",
+            current_state=node_name,
+        )
+
         row = persistence.get_by_id(checkpoint_id)
-        return _unwrap(row)
- 
-    def load(self, checkpoint_id: str) -> Checkpoint:
-        row = persistence.get_by_id(checkpoint_id)
+
         if row is None:
-            raise KeyError(f"unknown checkpoint: {checkpoint_id}")
+            raise RuntimeError(
+                f"Checkpoint was inserted but could not be loaded: "
+                f"{checkpoint_id}"
+            )
+
         return _unwrap(row)
- 
+
+    def load(self, checkpoint_id: str) -> Checkpoint:
+        """Load one checkpoint by ID."""
+
+        row = persistence.get_by_id(checkpoint_id)
+
+        if row is None:
+            raise KeyError(
+                f"unknown checkpoint: {checkpoint_id}"
+            )
+
+        return _unwrap(row)
+
     def get_latest(self, run_id: str) -> Checkpoint | None:
+        """Return the latest checkpoint for a run."""
+
         row = persistence.get_latest_for_run(run_id)
-        return _unwrap(row) if row else None
- 
-    def history(self, run_id: str) -> list[Checkpoint]:
-        return [_unwrap(row) for row in persistence.list_for_run(run_id)]
- 
-    def mark_run_finished(self, run_id: str, *, status: str = "completed") -> None:
-        runs.touch_run(run_id, status=status)
- 
+
+        if row is None:
+            return None
+
+        return _unwrap(row)
+
+    def history(self, run_id: str) -> list[dict[str, Any]]:
+        """Return checkpoint history as state dictionaries.
+
+        Graph 1 tests and callers expect history records to be
+        dictionary-like, so each checkpoint is converted to its
+        persisted state dictionary.
+
+        The checkpoint metadata is also included without changing
+        the actual state fields.
+        """
+
+        checkpoints = persistence.list_for_run(run_id)
+
+        history: list[dict[str, Any]] = []
+
+        for row in checkpoints:
+            checkpoint = _unwrap(row)
+
+            record = dict(checkpoint.state)
+
+            # Keep checkpoint information available to callers.
+            record["_checkpoint_id"] = checkpoint.checkpoint_id
+            record["_run_id"] = checkpoint.run_id
+            record["_node_name"] = checkpoint.node_name
+            record["_reason"] = checkpoint.reason
+            record["_metadata"] = checkpoint.metadata
+            record["_created_at"] = checkpoint.created_at
+
+            history.append(record)
+
+        return history
+
+    def mark_run_finished(
+        self,
+        run_id: str,
+        *,
+        status: str = "completed",
+    ) -> None:
+        """Mark a graph run as finished."""
+
+        runs.touch_run(
+            run_id,
+            status=status,
+        )
+
+    def exists(self, run_id: str) -> bool:
+        """Return True when a run has at least one checkpoint."""
+
+        return self.get_latest(run_id) is not None
+
+    def delete(self, run_id: str) -> None:
+        """Delete all checkpoints belonging to a run."""
+
+        persistence.delete_for_run(run_id)
