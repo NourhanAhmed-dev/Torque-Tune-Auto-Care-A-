@@ -1,0 +1,12 @@
+{
+  "case": "t03",
+  "method": "lats_ungrounded",
+  "decision": "RELEASE",
+  "grounded_success": false,
+  "env_success": true,
+  "calls": 2,
+  "tokens": 607,
+  "latency": 17.11,
+  "cost": 0.0003,
+  "final_plan": "Candidate 1: Perform database validation of torque specifications. If all safety checks pass, proceed with release. Decision: RELEASE"
+}

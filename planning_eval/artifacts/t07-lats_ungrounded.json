@@ -1,0 +1,12 @@
+{
+  "case": "t07",
+  "method": "lats_ungrounded",
+  "decision": "HOLD",
+  "grounded_success": true,
+  "env_success": true,
+  "calls": 2,
+  "tokens": 719,
+  "latency": 17.2,
+  "cost": 0.00036,
+  "final_plan": "The system indicates disclosure paperwork is missing. Policy mandates all documentation must be finalized before release. Decision: HOLD. Next action: Notify the shift lead that the vehicle cannot be released until the signed disclosure paperwork is uploaded to the client file."
+}

@@ -1,0 +1,12 @@
+{
+  "case": "t01",
+  "method": "lats_ungrounded",
+  "decision": "HOLD",
+  "grounded_success": true,
+  "env_success": true,
+  "calls": 2,
+  "tokens": 618,
+  "latency": 14.84,
+  "cost": 0.00031,
+  "final_plan": "Decision: HOLD. Next action: Review emissions compliance documentation and technician certification logs for Client ID 2, Vehicle ID 3."
+}

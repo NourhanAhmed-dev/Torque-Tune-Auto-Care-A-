@@ -1,193 +1,164 @@
-# Torque-Tune Auto Care — MCP Server + Memory & Grounded Knowledge
+# Torque-Tune Auto Care — MCP Server + Memory + Planning Gate
 
-> This project spans two labs on the same company, same repo, same database, same MCP server:
-> - **Session 1 (MCP Server Lab):** Built the baseline server with elicitation, sampling, notifications, and defensive tool design.
-> - **Session 3 (Memory & RAG Lab):** Extended the same server with long-term memory and grounded retrieval.
->
-> Nothing from Session 1 was duplicated or rebuilt — every Session-3 concern imports from and builds on top of the existing `mcp_server/` and `db/`.
+> This project spans three labs on the same company, same repo, same database, same MCP server.
+> Each layer imports from and builds on top of the previous.
 
 ---
 
-## Part I: The Problem We Solve
+## Part I: The Problems We Solve
 
-### Session-1 problem (still live)
-Torque-Tune is a performance/tuning garage chain. Front-desk staff and technicians both need an LLM assistant that can look up clients, vehicles, appointments, and tuning history, and let technicians log work and invoice clients — without raw database access. The catch: some tuning work (ECU remaps, catalytic converter/DPF removal) can void a vehicle's emissions warranty and affect road-legal compliance. That work must never be logged as "done" without an explicit technician sign-off confirming the client was told. That's the genuine risk the server is built around, and it's what justifies every MCP protocol concern below.
+### Session 1 — MCP Server
+Technicians and front-desk staff need an LLM assistant that can look up clients, vehicles, appointments, tuning history, and log work — without raw database access. The genuine risk: emissions-affecting work (ECU remaps, decat) must never be logged complete without an explicit customer disclosure sign-off. That risk justifies every MCP protocol concern below.
 
-### Session-3 problems (what we added)
-Once real usage started on the Session-1 server, two new problems appeared:
+### Session 3 — Memory & RAG
+Once live usage started, two new problems appeared:
+1. **Memory loss across sessions** → mechanics re-explain aftermarket modifications; wrong OEM parts get ordered.
+2. **Knowledge buried in ungoverned documents** → 40-page binder of TSB/POL/PT docs; hallucinated torque specs = liability.
 
-**Problem 1: Memory loss across sessions.**
-Mechanics re-explain vehicle history (e.g., *"this car has an aftermarket radiator from an accident"*) every visit. The short-term buffer forgets the moment a session ends, which costs us rework and — worse — wrong parts ordered (an OEM radiator for a car that was modified).
+### Week 4 — Planning Gate (this lab)
+**Problem we found on top of the existing system:** the MCP agent authenticates, elicits, and writes records — but *nothing decides* whether an emissions-affecting job may proceed before consequential writes. Today that decision is implicit in free-form LLM output, which can RELEASE a decat without disclosure evidence. This is real: a remap without signed customer disclosure is a regulatory violation, and our seeded SQLite + MCP session state give us ground truth to gate on.
 
-**Problem 2: Knowledge buried in ungoverned documents.**
-Critical service procedures, torque specs, and compliance policies live in a 40-page binder of service bulletins (`TSB-*`), policy manuals (`POL-*`), and parts specs (`PT-*`). Nobody wants to turn these into 40 new MCP tools. When the agent hallucinates a spec, it's a safety and liability issue.
-
-**Why forgetting/hallucinating costs us:**
-- Forgetting an aftermarket modification → wrong OEM part ordered → rework + warranty dispute
-- Fabricating a torque spec → engine damage + liability
-- Missing an emissions-affecting modification → regulatory non-compliance
+**Who owns it:** a planning gate built on the forked toolkit (`planning_toolkit/`, forked from AmrSheta22/task_decomposition_and_planning) that runs BEFORE the memory/RAG agent executes a high-risk case. The memory/RAG code path (`run_turn`) is reused for execution only, never duplicated.
 
 ---
 
-## Part II: How Each Concern Shows Up (Grader Map)
+## Part II: Concern Map (Grrader Locator)
 
 ### MCP Server concerns (Session 1 — still live)
 
-| Concern | Where | Why it's genuine |
-|---|---|---|
-| **Capability negotiation** | `mcp_server/server.py` → `list_tools()` | Client declares elicitation support at init; without it, write tools degrade to `flag_*_for_review`. |
-| **Notifications** | `authenticate_technician` handler | Session starts read-only; on auth, server calls `send_tool_list_changed()` — write tools appear without reconnect. |
-| **Elicitation** | `log_tuning_modification` | For `category == "emissions_affecting"`, server calls `session.elicit(...)` mid-call and pauses for explicit confirmation before marking `complete`. Decline leaves it `awaiting_signoff`. |
-| **Sampling** | `log_tuning_modification` | Before eliciting, server asks client model (`session.create_message`) to draft a risk summary for that specific modification; falls back to a static sentence if sampling unsupported. |
-| **Resources** | `list_resources()` / `read_resource()` | Emissions/warranty policy exposed via `resources/read`, not wrapped in a tool. |
-| **Prompts** | `mcp_server/prompts.py` | `tuning_disclosure` and `appointment_confirmation` — parameterized templates. |
-| **Progress tracking** | `generate_service_report` | Cross-table history pull (vehicles → tuning_logs → parts → appointments → invoices) with `send_progress` at each stage. |
-| **Defensive tool design** | `schemas.py` + handlers | Real JSON Schema (`enum`, `additionalProperties: false`) + server-side `jsonschema.validate()` + role checks (technician can only log under their own `tech_id`). |
-| **Transport** | `run_stdio.py` (dev) / `run_http.py` (deploy) | Local dev on stdio; multi-location chain on Streamable HTTP via Starlette + `StreamableHTTPSessionManager`. Same `create_server()` either way. |
+| Concern | Where |
+|---|---|
+| Capability negotiation | `mcp_server/server.py` → `list_tools()` |
+| Notifications | `authenticate_technician` → `send_tool_list_changed()` |
+| Elicitation | `log_tuning_modification` (emissions_affecting branch) |
+| Sampling | `log_tuning_modification` → `session.create_message` |
+| Resources / Prompts | `list_resources()`, `mcp_server/prompts.py` |
+| Progress tracking | `generate_service_report` → `send_progress` |
+| Defensive tool design | `schemas.py` + `jsonschema.validate` |
+| Transport | `run_stdio.py` (dev) / `run_http.py` (deploy) |
 
-### Memory & Retrieval concerns (Session 3 — this lab)
+### Memory & Retrieval concerns (Session 3)
 
-| Concern | Where | How to find it |
-|---|---|---|
-| **Short-term buffer + scratchpad** | `memory/short_term.py`, `memory/scratchpad.py` | Rolling buffer, pruned; scratchpad survives pruning |
-| **Context window — 4 strategies** | `context_eval/{sliding_window,observation_masking,recursive_summarization,zone_pruning}.py` | Pure `prune(transcript, **cfg) -> transcript` |
-| **Promote-or-drop routing** | `memory/router.py` → `MemoryRouter.route()` | Fires on overflow only → forget/episodic; never writes semantic; reasoning in `memory/logs/router.log` |
-| **Consolidation layer** | `memory/consolidation.py` → `ConsolidationEngine.consolidate()` + `_supersede()` | Periodic pass, never at write time; versioned conflict resolution |
-| **Vector database** | `rag/vector_store.py` | HNSW index + metadata payload store + pre-filter via metadata index |
-| **Naive / Hybrid / Agentic RAG** | `rag/{naive_rag,hybrid_rag,agentic_rag}.py` | Each exposes `.answer(query)` |
-| **Self-RAG verification** | `rag/verifier.py` → `SelfRAGVerifier.check()` | Applied to both RAG answers AND memory recall |
-| **7 integration hooks** | `agent/client.py` → `run_turn()` | Labeled `HOOK 1..7` — visibly reuse existing loop |
+| Concern | Where |
+|---|---|
+| Short-term buffer + scratchpad | `memory/short_term.py`, `memory/scratchpad.py` |
+| 4 context strategies | `context_eval/{sliding_window,observation_masking,recursive_summarization,zone_pruning}.py` |
+| Promote-or-drop routing | `memory/router.py` (forget/episodic only) |
+| Consolidation layer | `memory/consolidation.py` (periodic, versioned conflict resolution) |
+| Vector DB + RAG variants | `rag/{vector_store,naive_rag,hybrid_rag,agentic_rag}.py` |
+| Self-RAG verification | `rag/verifier.py` (applies to RAG answers AND memory recall) |
+| 7 integration hooks | `agent/client.py` → `run_turn()` (labeled HOOK 1..7) |
+
+### Planning concerns (Week 4) — every concern locatable without reading the whole file
+
+| Concern | Where |
+|---|---|
+| DAG construction + cycle check | `planning_toolkit/planning_lab/models.py` → `Plan.validate_dag` (NetworkX) |
+| Decomposition-first vs dynamic branch | `planning_toolkit/planning_lab/cli.py` (`--mode dag` vs `--mode dynamic`) |
+| Routing PS vs ToT vs LATS | `planning_toolkit/planning_lab/algorithms/router.py` → `route_subtask` |
+| Grounded environment (real feedback) | `planning/torque_tune_environment.py` (SQLite evidence + compliance rules) |
+| Self-Refine critique | `planning_toolkit/planning_lab/algorithms/self_refine.py` |
+| Reflexion critique + memory | `planning_toolkit/planning_lab/algorithms/reflexion.py` |
 
 ---
 
-## Part III: Benchmark Tables & Final Choices
+## Part III: Benchmark Tables (frozen suites, shipped choices)
 
-### Table 1 — Context window management (15 points)
+### Table 1 — Context window (Session 3)
+10 synthetic long-context transcripts (~30k tokens each); critical aftermarket-radiator fact buried under 25–34 turns of tool JSON noise.
 
-Benchmarked 4 strategies against a **frozen** suite of 10 synthetic long-context transcripts (~30k tokens each), where a critical aftermarket-radiator fact in turn 1 is buried under 25–34 turns of tool JSON noise.
+| Strategy | Detail recalled | Avg input tokens | Avg latency |
+|---|---|---|---|
+| Sliding window (last 10) | 1/10 | 10,547 | 2.4s |
+| **Observation masking (last 3)** | **8/10** | **3,929** | **2.2s** |
+| Recursive summarization | 10/10 | 7,699 | 4.1s |
+| Zone-based pruning | 10/10 | 10,808 | 4.1s |
 
-| Strategy | Detail recalled | Avg input tokens/run | Avg output tokens/run | Avg latency |
+**Shipped: Observation masking** — 63% token reduction vs sliding window, 2.2s latency, and the 2 misses only occur when the fact is buried inside old tool payloads (rare in our real dialogue-driven domain).
+
+### Table 2 — Retrieval architectures (Session 3)
+6 fixed evaluation questions.
+
+| Architecture | Completed | Accuracy | Tokens/query | Latency |
 |---|---|---|---|---|
-| Sliding window (last 10 turns) | 1/10 | 10,547 | 289 | 2.4s |
-| **Observation masking (keep last 3)** | **8/10** | **3,929** | **19** | **2.2s** |
-| Recursive summarization (every 15 turns) | 10/10 | 7,699 | 104 | 4.1s |
-| Zone-based pruning (4 zones) | 10/10 | 10,808 | 69 | 4.1s |
+| **Naive RAG** | 6/6 | **81.12%** | **1460.3** | 5.406s |
+| Hybrid RAG | 6/6 | 81.12% | 1478.8 | 5.321s |
+| Agentic RAG | 2/6 | 100%* | 1397.5* | 13.801s* |
 
-**Shipped:** Observation masking.
+\* Excluded — free-tier rate limit prevented completing all 6 questions.
 
-**Justification (from the table, not intuition):**
-- Lowest cost by far: 3,929 input tokens (63% reduction vs sliding window) and 19 output tokens — zero LLM generation overhead.
-- Lowest latency: 2.2s vs 4.1s for the two 10/10 strategies. On live mechanic calls where someone is waiting on the phone, this matters.
-- 8/10 recall: The 2 failures (cases 7 and 9 in the frozen suite) happen specifically when the critical fact was buried *inside* an old tool JSON payload rather than the dialogue. In our real domain, mechanics state modifications explicitly in conversation; facts buried inside old tool payloads are rare.
-- Why not Recursive/Zone? Both achieved 10/10 but at 4× the latency and (for Recursive) 5× the output tokens. The marginal 2 extra cases recovered didn't justify the live-call latency cost for our traffic mix.
+**Shipped: Naive RAG** — same accuracy as Hybrid at fewer tokens; Hybrid's 0.085s latency edge does not justify the added complexity.
 
-**Test suite guardrail:** `context_eval/test_cases.py` was frozen after the first run; changing cases between runs invalidates the table.
+### Table 3 — Planning methods (Week 4)
+Frozen 7-case suite; gemini-3.1-flash-lite; every method scored by the same grounded validator (real SQLite evidence + compliance rules).
 
-### Table 2 — Retrieval Architectures (15 points)
+| Method | Grounded success | Env self-success | Avg calls | Avg tokens | Avg latency s | Est cost/run |
+|---|---|---|---|---|---|---|
+| **lats** | **6/7** | **6/7** | 2.7 | 1067 | 13.2 | **$0.0005** |
+| plan_and_solve | 4/7 | 4/7 | 1.0 | 1040 | 10.7 | $0.0005 |
+| decomposition_first | 4/7 | 3/7 | 7.0 | 3130 | 36.7 | $0.0016 |
+| reflexion | 4/7 | 3/7 | 3.0 | 1407 | 15.1 | $0.0007 |
+| dynamic | 2/7 | 2/7 | 6.0 | 2892 | 30.0 | $0.0014 |
+| tree_of_thoughts | 2/7 | 3/7 | 9.0 | 4866 | 59.1 | $0.0024 |
+| lats_ungrounded | 4/7 | **7/7** | 2.0 | 669 | 11.5 | $0.0003 |
+| reflexion_ungrounded | 2/7 | **7/7** | 1.0 | 417 | 8.0 | $0.0002 |
 
-| Architecture | Completed runs | Accuracy (mean %) | Tokens/query (mean) | Latency/query (mean s) | Evaluation status |
-|---|---:|---:|---:|---:|---|
-| **Naive RAG** | 6/6 | **81.12** | **1460.3** | 5.406 | Complete |
-| Hybrid RAG | 6/6 | 81.12 | 1478.8 | **5.321** | Complete |
-| Agentic RAG | 2/6 | 100.0* | 1397.5* | 13.801* | Incomplete - excluded from decision |
+**Method choice per sub-task (driven by these numbers):**
 
-\* Agentic RAG was not included in the shipping decision because only 2 of 6
-fixed evaluation questions completed. The Gemini free-tier project enforced a
-5 generate-requests-per-minute limit; Agentic RAG makes multiple generation
-requests per question for planning and final answer generation. Continuing
-would have produced an incomplete and biased comparison, so the run was
-stopped rather than reporting partial results as a full benchmark.
-
-**Shipped default: Naive RAG.**
-
-Naive and Hybrid RAG achieved the same measured accuracy (81.12%) on the same
-six fixed questions. Naive used fewer tokens per query (1460.3 vs 1478.8).
-Hybrid's latency advantage was only 0.085 seconds, which is too small in this
-six-question sample to justify its additional retrieval complexity. Agentic
-RAG remains implemented and demonstrated, but its incomplete benchmark was
-not used for the production decision.
----
-
-## Part IV: Memory System Details
-
-### Short-term buffer + scratchpad
-- `memory/short_term.py`: rolling deque with `maxlen`. **Pruning never touches the scratchpad.**
-- `memory/scratchpad.py`: active goal, sub-goals, working state. Kept as a separate block in the Gemini context.
-
-### Promote-or-drop routing (forget/episodic only)
-- `MemoryRouter.route(message)` fires on buffer overflow. Returns `EpisodicMemory` or `None` (forget).
-- **Does NOT write to semantic memory** — only the periodic consolidation pass does.
-- Every decision logged to `memory/logs/router.log` with the importance score and reason.
-
-### Consolidation layer (periodic, separate)
-- `ConsolidationEngine.consolidate()` runs every 10 turns (configurable).
-- **Explicitly resolves conflicts:** detects contradictions between episodes for the same `(vehicle_id, client_id)` entity (e.g., `5W-30` vs `0W-20` oil spec), bumps version on the new fact, and deactivates the old one — **never silently overwrites**.
-- Old versions are kept, dated, and flagged `active=False`. The grader can see both in `memory/storage/semantic.json`.
-
-**Real conflict we resolve (demonstrated in demo section 11):**
-- Episode A: "Vehicle 4's service manual specifies 5W-30 oil"
-→ semantic v1 active=false (superseded, dated)
-- Episode B: "Vehicle 4's manual updated — now specifies 0W-20 oil"
-→ semantic v2 active=true
-
+- **Final release decision → LATS + grounded env** (6/7 at $0.0005). The ungrounded row proves the guardrail: LATS ungrounded self-approves 7/7 yet scores only 4/7 grounded — external SQLite/MCP validation is precisely what earns the gap.
+- **Sequential verification → Plan-and-Solve** (4/7 at 1 call, $0.0005) — same accuracy as decomposition-first at 1/7 the cost.
+- **Decision comparison → Tree-of-Thoughts** only when the deliverable is an explicit comparison; honest note: wave-1 numbers (2/7, $0.0024) do not justify general use.
+- **Pressure cases → Reflexion** (4/7, carries reflections across trials; ungrounded variant self-approves 7/7 while scoring 2/7 grounded).
+- **Top level → Decomposition-first** for fully mechanical boards; **dynamic** when mid-plan surprises are expected (divergence visible in transcript).
 
 ---
 
-## Part V: Self-RAG-Style Verification
+## Part IV: Demo Transcript
 
-- `SelfRAGVerifier.check(query, sources, answer)` → `(supported: bool, critique: str)`.
-- Two reflection dimensions: **relevant** (is the retrieval on-topic?) and **supported** (is the claim in the evidence?).
-- Applied to **both** RAG answers and recalled memories — not just retrieval.
-- **Visible consequence on failure:** answer prefixed with `[Low confidence — <critique>]`. The demo (section 12) shows both a pass and an explicit catch.
+`python -m agent.planning_demo` runs the Week-4 guard in front of the existing memory/RAG agent. The transcript shows:
 
----
+1. **High-risk detection** on the catalytic-converter-delete request.
+2. **Decomposition** into 4 batches: `[['t1', 't2'], ['t3'], ['t4']]`.
+3. **Routing per sub-task** via `route_subtask`: verification sub-tasks → Plan-and-Solve; comparison sub-task → Tree-of-Thoughts; final decision → LATS.
+4. **Reflexion** over 3 trials with grounded SQLite feedback (vehicle 3 ∈ client 2, technician 2 exists, appointment 3 matches).
+5. **Guard note injected** into the agent's system prompt.
+6. **TorqueTuneAgent executes** with the guard respected: HOLD/ESCALATE decision honored, no `log_tuning_modification` or `create_invoice` on emissions-affecting work without disclosure.
 
-## Part VI: Demo Evidence
-
-`agent/demo.py --auto` produces a 14-section transcript covering every required moment:
-
-1. **Capability negotiation** with MCP server
-2. **Baseline tool set** before authentication
-3. **Authentication + `tools/list_changed`** notification
-4. **Defensive tool design** (validation on cosmetic modification)
-5. **Elicitation + sampling** on emissions-affecting modification
-6. **Invoice creation with authorization check**
-7. **Progress tracking** on service report generation
-8. **Resources + prompts** verification
-9. **Gemini reasoning loop** — real tool calls, grounded answer
-10. **Memory: item survives promote-or-drop** — radiator note routed to episodic (see `memory/logs/router.log`)
-11. **Consolidation: real contradiction resolved** — 5W-30 vs 0W-20 oil, versioned and dated
-12. **Self-RAG: grounded pass vs unsupported catch** — low-confidence flag fires on out-of-corpus question
-13. **Context management: all 4 strategies on frozen suite** — table printed
-14. **Retrieval architectures: same question, 3 ways** — naive/hybrid/agentic answers compared
-
-Run it: `python -m agent.demo --auto`
+`python -m planning_toolkit.planning_lab.cli --mode <mode>` runs every planning algorithm with the real grounded environment. Artifacts saved under `planning_toolkit/artifacts/run-*.json` (Self-Refine `critique` + `grounded_issues` visible in dag-mode artifacts; LATS tree with `reflections` per failed branch; Reflexion memory across trials).
 
 ---
 
-## Part VII: Setup & Run
+## Part V: Setup & Run
 
 ```bash
-# 1. Environment
 python -m venv .venv
-.venv\Scripts\activate                  # Windows
-# source .venv/bin/activate             # macOS/Linux
+.venv\Scripts\activate
 python -m pip install -r requirements.txt
 
-# 2. Secrets (NEVER commit .env — it's in .gitignore)
-# Create .env with:
-#   GEMINI_API_KEY=your_key_here
+# .env (gitignored)
+GEMINI_API_KEY=your_key_here
+GEMINI_MODEL=gemini-3.1-flash-lite
+MCP_TRANSPORT=stdio / http
+MCP_SERVER_URL=http://xxxxxx:8000/mcp
 
-# 3. Run the MCP server (pick one transport)
-python -m mcp_server.run_stdio          # local dev
-python -m mcp_server.run_http           # deploy on http://localhost:8000/mcp
+# MCP server
+python -m mcp_server.run_stdio      # dev
+python -m mcp_server.run_http       # deploy
 
-# 4. Run the demo (covers all concerns from both labs)
+# Existing demos (Sessions 1 + 3)
 python -m agent.demo --auto
 
-# 5. Build the vector index, then run evaluations
-python -m rag.ingest
-python -m context_eval.evaluate         # context window table (~5 min)
-python -m rag.evaluation --architecture naive
-python -m rag.evaluation --architecture hybrid
-# Agentic RAG is run separately because the free-tier request limit is low.
+# Week 4: planning gate + memory/RAG agent
+python -m agent.planning_demo
+
+# Week 4: run individual planning methods with real grounded environment
+python -m planning_toolkit.planning_lab.cli "<goal>" --mode dag   --technician-authenticated
+python -m planning_toolkit.planning_lab.cli "<goal>" --mode dynamic --technician-authenticated
+python -m planning_toolkit.planning_lab.cli "<goal>" --mode ps
+python -m planning_toolkit.planning_lab.cli "<goal>" --mode tot
+python -m planning_toolkit.planning_lab.cli "<goal>" --mode lats --technician-authenticated
+python -m planning_toolkit.planning_lab.cli "<goal>" --mode reflexion --technician-authenticated
+
+# Week 4: frozen evaluation suite
+python -m planning_eval.evaluate --resume          # runs 8 methods × 7 cases, resumes partial runs
+python -m planning_eval.evaluate --table-only      # rebuilds comparison table from artifacts, 0 API calls

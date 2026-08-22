@@ -33,6 +33,7 @@ from memory.short_term import ShortTermMemory
 from rag.agentic_rag import AgenticRAG
 from rag.verifier import SelfRAGVerifier
 from rag.naive_rag import NaiveRAG
+from rag.hybrid_rag import HybridRAG
 # Shipped strategy — justified by context_eval/comparison_table.md
 SHIPPED_PRUNER = observation_masking
 PRUNE_KEEP_LAST_TOOL_OUTPUTS = 3
@@ -61,7 +62,8 @@ class SessionPipeline:
         self.semantic = SemanticStore()
         self.consolidator = ConsolidationEngine()
         self.agentic_rag = AgenticRAG()        # multi-part queries only
-        self.naive_rag = NaiveRAG()  # Default path, chosen by completed benchmark.
+        # self.naive_rag = NaiveRAG()  # Default path, chosen by completed benchmark.
+        self.hybrid_rag = HybridRAG()
         self.verifier = SelfRAGVerifier()
         self._turns = 0
 
@@ -141,17 +143,39 @@ class SessionPipeline:
     def needs_knowledge(self, query: str) -> bool:
         q = query.lower()
         return any(h in q for h in _KNOWLEDGE_HINTS)
-
+#________________________________________________________________________________
     async def retrieve(self, query: str) -> dict:
-        engine = self.agentic_rag if self._looks_multipart(query) else self.naive_rag
-        retrieved, answer = await self._call_rag(engine, query)
-        supported, critique = self.verify(query, retrieved, answer)
-        return {
+        engine = self.hybrid_rag
+        try:
+            retrieved, answer = await self._call_rag(engine, query)
+            supported, critique = self.verify(query, retrieved, answer)
+            return {
             "grounded": supported,
             "answer": answer,
             "sources": retrieved,
             "critique": critique,
+            }
+        except Exception as exc:
+            message = str(exc).lower()
+
+            transient_error = (
+             "503" in message
+            or "unavailable" in message
+            or "429" in message
+            or "resource_exhausted" in message
+            )
+            if not transient_error:
+                raise
+
+            print(f"[RAG] Temporarily unavailable; continuing without RAG: {exc}")
+
+            return {
+            "grounded": False,
+            "answer": "",
+            "sources": [],
+            "critique": "Knowledge-base retrieval was temporarily unavailable.",
         }
+    
 
     # ── context window management (shipped strategy) ─────────────────────
     def compose_context(self, user_message: str, recalled: list, kb: dict | None) -> list:

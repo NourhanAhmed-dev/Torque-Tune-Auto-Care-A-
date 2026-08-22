@@ -1,0 +1,12 @@
+{
+  "case": "t04",
+  "method": "tree_of_thoughts",
+  "decision": "ESCALATE",
+  "grounded_success": true,
+  "env_success": true,
+  "calls": 9,
+  "tokens": 5006,
+  "latency": 65.85,
+  "cost": 0.0025,
+  "final_plan": "ESCALATE: Since the customer explicitly declined a mandatory compliance document, the technician should escalate the file to the shift-lead or service manager to determine if the account should be flagged for permanent restriction or if a formal refusal-of-service protocol must be initiated."
+}
