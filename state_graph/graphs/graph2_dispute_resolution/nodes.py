@@ -171,24 +171,29 @@ class Graph2Nodes:
     def _n_link_to_original_log(self, state: Graph2State) -> Graph2State:
         if should_skip(LINK_TO_ORIGINAL_LOG, self._resume_info(state)):
             return state
-
         vehicle_id = state["vehicle_id"]
         complaint_text = state.get("complaint", {}).get("description", "")
-
-        # RAG here is just a retrieval helper over tuning_logs +
-        # episodic_memories for this vehicle -- it is not the thing
-        # deciding fault.
         query = (
             f"Original tuning log and episodic memory history for vehicle "
             f"{vehicle_id}. Client now reports: {complaint_text}"
         )
-        result = self.rag.answer(query)
 
-        state["original_log_summary"] = result.answer
-        state["original_log_sources"] = [r.doc_id for r in result.retrieved]
+        def work():
+            result = self.rag.answer(query)
+            return {"summary": result.answer,
+                    "sources": [r.doc_id for r in result.retrieved]}
+
+        out = self.failure_node.run(
+            run_id=state["run_id"],
+            node_name=LINK_TO_ORIGINAL_LOG,
+            state=dict(state),
+            work=work,
+        )
+        state["original_log_summary"] = out["summary"]
+        state["original_log_sources"] = out["sources"]
         state["status"] = "running"
-
-        return self._checkpoint(state, LINK_TO_ORIGINAL_LOG, "linked to original tuning log via RAG")
+        return self._checkpoint(state, LINK_TO_ORIGINAL_LOG,
+                                "linked to original tuning log via RAG")
 
     def _n_schedule_inspection(self, state: Graph2State) -> Graph2State:
         if should_skip(SCHEDULE_INSPECTION, self._resume_info(state)):
@@ -430,14 +435,23 @@ class Graph2Nodes:
         if should_skip(DETERMINE_RESPONSIBILITY, self._resume_info(state)):
             return state
 
-        responsibility, ambiguous, trace = self._run_responsibility_react(state)
+        def work():
+            responsibility, ambiguous, trace = self._run_responsibility_react(state)
+            return {"responsibility": responsibility,
+                    "ambiguous": ambiguous, "trace": trace}
 
-        state["responsibility"] = responsibility
-        state["responsibility_ambiguous"] = ambiguous
-        state["responsibility_react_trace"] = trace
+        out = self.failure_node.run(
+            run_id=state["run_id"],
+            node_name=DETERMINE_RESPONSIBILITY,
+            state=dict(state),
+            work=work,
+        )
+        state["responsibility"] = out["responsibility"]
+        state["responsibility_ambiguous"] = out["ambiguous"]
+        state["responsibility_react_trace"] = out["trace"]
         state["status"] = "running"
-
-        return self._checkpoint(state, DETERMINE_RESPONSIBILITY, "responsibility determined via constrained ReAct")
+        return self._checkpoint(state, DETERMINE_RESPONSIBILITY,
+                                "responsibility determined via constrained ReAct")
 
     def _route_after_responsibility(self, state: Graph2State) -> str:
         if state.get("responsibility_ambiguous"):

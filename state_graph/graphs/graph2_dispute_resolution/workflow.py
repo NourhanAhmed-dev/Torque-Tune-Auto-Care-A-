@@ -76,7 +76,7 @@ from state_graph.hitl.hitl_manager import HitlManager, HitlPaused
 from state_graph.hitl.approval_service import ApprovalService
 from rag.agentic_rag import AgenticRAG
 
-from state_graph.graphs.graph2.nodes import (
+from state_graph.graphs.graph2_dispute_resolution.nodes import (
     INTAKE_COMPLAINT,
     LINK_TO_ORIGINAL_LOG,
     SCHEDULE_INSPECTION,
@@ -318,14 +318,17 @@ class Graph2Warranty:
             state["completed_nodes"] = completed
             state["inspection_result"] = {"status": "resolved_via_ticket", "notes": resolution}
             state["proposed_resolution"] = resolution
-
         elif origin_node == SENIOR_REVIEW_HITL:
             if SENIOR_REVIEW_HITL not in completed:
                 completed.append(SENIOR_REVIEW_HITL)
             state["completed_nodes"] = completed
             state["responsibility"] = resolution
             state["responsibility_ambiguous"] = False
-
+        elif origin_node in (LINK_TO_ORIGINAL_LOG, DETERMINE_RESPONSIBILITY):
+            # Transient infrastructure failure (e.g. Gemini quota/503):
+            # the node never completed, so resume simply RE-RUNS it.
+            # The resolution text is informational ("quota restored").
+            pass
         else:
             raise ValueError(
                 f"Ticket {ticket_id} was opened by unexpected node "
