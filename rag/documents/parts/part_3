@@ -1,0 +1,41 @@
+---
+doc_id: part_spec_103
+doc_type: part_spec
+sku: COBB-AP3-ST2
+part_id: 103
+part_name: Stage 2 ECU Tune (Turbo Kit Calibration)
+---
+
+# Parts Specification: Stage 2 ECU Tune (Turbo Kit Calibration)
+
+**SKU:** COBB-AP3-ST2
+
+**Part ID:** 103
+
+**Category:** Engine Management
+
+**Manufacturer:** COBB Tuning
+
+## Compatibility
+
+Requires the turbo kit (`part_id 101`) and intercooler (`part_id 102`) to be fully installed and leak-tested before flashing.
+
+Flashing a boost map onto a vehicle still running the stock turbo/intercooler can cause a boost-cut limp mode at best and engine damage at worst.
+
+Also requires fuel injectors rated for the target power level (`part_id 105`) if the tune targets more than 320 whp. The stock injectors will run out of headroom and lean out above that threshold.
+
+## Torque Specs
+
+Not applicable — this is a software installation step, with no fasteners.
+
+## Installation Order
+
+**Install After:** `part_id 101`, `part_id 102`
+
+The ECU tune must be applied after the turbo kit and intercooler are fully installed and leak-tested.
+
+## Special Instructions
+
+Flash with the vehicle on a full tank of the fuel octane the map was built for. 91 vs 93 AKI maps are not interchangeable.
+
+Perform an initial low-boost "safe map" datalogging pull before committing to the full-boost map, and check for knock retard and AFR trend.

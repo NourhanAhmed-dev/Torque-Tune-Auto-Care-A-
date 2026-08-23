@@ -1,0 +1,40 @@
+---
+doc_id: part_spec_105
+doc_type: part_spec
+sku: ID1000-HI-4CYL
+part_id: 105
+part_name: 1000cc High-Impedance Fuel Injectors (Set of 4)
+---
+
+# Parts Specification: 1000cc High-Impedance Fuel Injectors (Set of 4)
+
+**SKU:** ID1000-HI-4CYL
+
+**Part ID:** 105
+
+**Category:** Fuel System
+
+**Manufacturer:** Injector Dynamics
+
+## Compatibility
+
+Only required if the ECU tune (`part_id 103`) targets more than 320 whp. Below that threshold, the stock injectors have enough headroom and this part can be skipped entirely.
+
+High-impedance injectors only. Do not mix with a low-impedance ECU tune, as this can cause erratic idle and a check-engine code for injector circuit malfunction.
+
+Requires updated injector scaling data to be loaded into the ECU tune before first start. Installing the injectors without updating the tune's injector data will cause a severe rich condition.
+
+## Torque Specs
+
+- **Fuel rail mounting bolts:** 10 Nm.
+- **Injector retaining clips:** Hand-tight, snap-fit — no torque specification. Confirm full seating by feel and visually check the clip position.
+
+## Installation Order
+
+**Install After:** `part_id 103`
+
+The injectors must be installed after the ECU tune is prepared to support the updated injector scaling data.
+
+## Special Instructions
+
+Replace injector O-rings even if the old ones look fine. A marginal O-ring can cause a vacuum/fuel leak that is very difficult to diagnose after the intake manifold is back on.

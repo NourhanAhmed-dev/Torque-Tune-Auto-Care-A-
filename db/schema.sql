@@ -207,9 +207,7 @@ CREATE TABLE supplier_order_parts (
     PRIMARY KEY (order_id, part_id),
     FOREIGN KEY (order_id)
         REFERENCES supplier_orders(order_id)
-        ON DELETE CASCADE,
-    FOREIGN KEY (part_id)
-        REFERENCES parts_catalog(part_id)
+        ON DELETE CASCADE
 );
 
 CREATE TABLE installation_steps (

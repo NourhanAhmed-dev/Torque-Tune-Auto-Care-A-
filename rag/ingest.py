@@ -93,4 +93,4 @@ def ingest(reset_db: bool = False) -> VectorStore:
 if __name__ == "__main__":
     # أثناء التطوير اجعليها True
     # وبعدها خليها False في التشغيل العادي
-    ingest(reset_db=True)
+    ingest(reset_db=False)

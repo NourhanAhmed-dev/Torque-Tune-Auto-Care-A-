@@ -1,0 +1,41 @@
+---
+doc_id: part_spec_102
+doc_type: part_spec
+sku: MMINT-FMIC-02
+part_id: 102
+part_name: Front-Mount Intercooler Kit
+---
+
+# Parts Specification: Front-Mount Intercooler Kit
+
+**SKU:** MMINT-FMIC-02
+
+**Part ID:** 102
+
+**Category:** Forced Induction / Cooling
+
+**Manufacturer:** Mishimoto
+
+## Compatibility
+
+Requires the turbo kit (`part_id 101`) to already be installed, since the hot-side piping bolts directly to the turbo's compressor outlet.
+
+Bumper cover must be trimmed for core clearance — not compatible with vehicles running the factory bumper support bar without modification.
+
+Silicone couplers included are rated to 3 bar / 180°C. Do not reuse factory rubber couplers, as they are not rated for the boost levels this turbo kit produces.
+
+## Torque Specs
+
+- **Coupler T-bolt clamps:** 8 Nm. Do not overtighten — silicone couplers can be damaged above 10 Nm.
+- **Core mounting bracket bolts:** 12 Nm.
+- **Piping support bracket bolts:** 9 Nm.
+
+## Installation Order
+
+**Install After:** `part_id 101`
+
+The intercooler must be installed after the turbo kit because the hot-side piping connects directly to the turbo compressor outlet.
+
+## Special Instructions
+
+Pressure-test the full charge-air piping circuit to 1.5x expected peak boost before first start to catch coupler leaks early.
