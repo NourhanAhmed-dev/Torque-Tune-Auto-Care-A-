@@ -10,7 +10,9 @@ INSERT INTO technicians(full_name, tech_phone, specialization) VALUES
 INSERT INTO vehicles(client_id, make, model, year, license_plate, vin) VALUES
 (1,'BMW','320i',2021,'ABC123','VIN000001'),
 (1,'Audi','A4',2020,'XYZ456','VIN000002'),
-(2,'Mercedes','C200',2019,'EEE555','VIN000003');
+(2,'Mercedes','C200',2019,'EEE555','VIN000003'),
+(2,'Volvo','XC60',2021,'FFF666','VIN000004'),  
+(3,'Toyota','Hilux',2020,'GGG777','VIN000005');
 
 INSERT INTO appointments(appointment_date, vehicle_id, tech_id) VALUES
 ('2026-08-10 10:00',1,1),
@@ -100,4 +102,17 @@ INSERT INTO build_part_requirements (preset_key, part_id, part_name, supplier, p
  
 INSERT INTO build_part_requirements (preset_key, part_id, part_name, supplier, price, quantity) VALUES
     ('exhaust_upgrade_only', 104, '3-Inch High-Flow Downpipe', 'SupplierA', 550.00, 1);
- 
+
+-- Seed tow providers(graph 3)
+INSERT OR IGNORE INTO tow_providers (provider_id, name, latitude, longitude, status) VALUES
+    ('PROV-001', 'Alex Rapid Tow',    31.2001, 29.9187, 'available'),
+    ('PROV-002', 'Giza Recovery Co.', 30.0131, 31.2089, 'available'),
+    ('PROV-003', 'Nile Fleet Assist', 30.0444, 31.2357, 'available'),
+    ('PROV-004', 'Delta Roadside',    31.2156, 29.9553, 'available'),
+    ('PROV-005', 'Cairo 24/7 Tow',    30.0626, 31.2497, 'available');
+
+INSERT OR IGNORE INTO vehicle_telematics
+(vehicle_id, battery_voltage, engine_temperature, latitude, longitude, dtc_codes) VALUES
+(1, 12.4, 118, 30.0444, 31.2357, '["P0217"]'),
+(2, 12.6, 90,  31.2001, 29.9187, '["P0420"]'),
+(3, 11.9, 95,  30.0131, 31.2089, '[]');
