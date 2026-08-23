@@ -267,3 +267,44 @@ CREATE INDEX idx_build_part_requirements_preset
     ON build_part_requirements(preset_key);
 COMMIT;
 PRAGMA foreign_keys = ON;
+
+-- Table for managing fleet dispatches
+CREATE TABLE IF NOT EXISTS fleet_dispatches (
+    dispatch_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    vehicle_id INTEGER,
+    provider_id TEXT NOT NULL,
+    distance_km REAL,
+    cost REAL,
+    status TEXT NOT NULL DEFAULT 'dispatched',  -- dispatched | en_route | completed | failed
+    location TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (run_id) REFERENCES state_graph_runs(run_id) ON DELETE CASCADE,
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id)
+);
+
+CREATE TABLE IF NOT EXISTS fleet_manager_notifications (
+    notification_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (run_id) REFERENCES state_graph_runs(run_id) ON DELETE CASCADE
+);
+
+-- Seed provider locations so get_provider_location has real rows to read,
+-- instead of the node fabricating coordinates itself.
+CREATE TABLE IF NOT EXISTS tow_providers (
+    provider_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'available'  -- available | busy | offline
+);
+CREATE TABLE IF NOT EXISTS vehicle_telematics (
+    vehicle_id INTEGER PRIMARY KEY,
+    battery_voltage REAL, engine_temperature REAL,
+    latitude REAL, longitude REAL,
+    dtc_codes TEXT NOT NULL DEFAULT '[]',
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id));
