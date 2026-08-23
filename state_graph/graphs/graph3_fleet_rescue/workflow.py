@@ -57,7 +57,7 @@ from state_graph.checkpoint.checkpoint_manager import CheckpointManager
 from state_graph.checkpoint.recovery import get_resume_info
 from state_graph.hitl.hitl_manager import HitlPaused
 from state_graph.tickets.ticket_manager import FailurePaused
-from state_graph.graph3_fleet_rescue.nodes import (
+from state_graph.graphs.graph3_fleet_rescue.nodes import (
     ExternalWaitPaused,
     FleetRescueNodes,
     FleetRescueState,
