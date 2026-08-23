@@ -115,7 +115,6 @@ def create_server() -> Server:
                     "required": ["query"],
                 },
             ),
-            
             Tool(
                 name="run_consolidation",
                 description="Trigger a manual consolidation pass over episodic memory.",
@@ -137,6 +136,104 @@ def create_server() -> Server:
             Tool(
                 name="list_vehicles",
                 description="List all registered vehicles with client details.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": False,
+                },
+            ),
+            Tool(
+                name="get_vehicle_telematics",
+                description="Read live telematics for a fleet vehicle.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {"vehicle_id": {"type": "integer"}},
+                    "required": ["vehicle_id"],
+                    "additionalProperties": False,
+                },
+            ),
+            Tool(
+                name="record_repair",
+                description="Workshop records completed repair; clears DTC codes.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {"vehicle_id": {"type": "integer"}},
+                    "required": ["vehicle_id"],
+                    "additionalProperties": False,
+                },
+            ),
+            Tool(
+                name="get_provider_location",
+                description="Look up a tow provider's current location and availability.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "provider_id": {"type": "string"},
+                    },
+                    "required": ["provider_id"],
+                    "additionalProperties": False,
+                },
+            ),
+            Tool(
+                name="dispatch_tow_truck",
+                description="Dispatch a tow truck provider to a vehicle's location. Fails if the provider is not 'available'.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "run_id": {"type": "string"},
+                        "provider_id": {"type": "string"},
+                        "vehicle_id": {"type": ["integer", "null"]},
+                        "location": {"type": "string"},
+                        "distance_km": {"type": "number", "minimum": 0},
+                        "cost": {"type": "number", "minimum": 0},
+                    },
+                    "required": [
+                        "run_id",
+                        "provider_id",
+                        "location",
+                        "distance_km",
+                        "cost",
+                    ],
+                    "additionalProperties": False,
+                },
+            ),
+            Tool(
+                name="update_vehicle_status",
+                description="Update the status of a fleet dispatch (dispatched, en_route, completed, failed).",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "dispatch_id": {"type": "integer", "minimum": 1},
+                        "status": {
+                            "type": "string",
+                            "enum": [
+                                "dispatched",
+                                "en_route",
+                                "completed",
+                                "failed",
+                            ],
+                        },
+                    },
+                    "required": ["dispatch_id", "status"],
+                    "additionalProperties": False,
+                },
+            ),
+            Tool(
+                name="notify_fleet_manager",
+                description="Send a notification message tied to a fleet-rescue run.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "run_id": {"type": "string"},
+                        "message": {"type": "string", "minLength": 1},
+                    },
+                    "required": ["run_id", "message"],
+                    "additionalProperties": False,
+                },
+            ),
+            Tool(
+                name="search_providers",
+                description="List tow providers with current availability.",
                 inputSchema={
                     "type": "object",
                     "properties": {},
@@ -206,16 +303,39 @@ def create_server() -> Server:
                     ),
                 ]
             )
-
+        try:
+            mgmt = get_db_connection()
+            try:
+                mgmt.execute("""CREATE TABLE IF NOT EXISTS tool_overrides (
+                    tool_name TEXT PRIMARY KEY,
+                    enabled INTEGER NOT NULL DEFAULT 1,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP)""")
+                disabled = {r["tool_name"] for r in mgmt.execute(
+                    "SELECT tool_name FROM tool_overrides WHERE enabled = 0")}
+            finally:
+                mgmt.close()
+            base_tools = [t for t in base_tools if t.name not in disabled]
+        except Exception as exc:
+            logger.warning(f"tool_overrides skipped: {exc}")
         return base_tools
+
 
     @app.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         nonlocal _authenticated_tech
         conn = get_db_connection()
         cursor = conn.cursor()
-
         try:
+            try:
+                ov = cursor.execute(
+                    "SELECT enabled FROM tool_overrides WHERE tool_name = ?",
+                    (name,)).fetchone()
+                if ov and not ov["enabled"]:
+                    return [TextContent(type="text", text=json.dumps(
+                        {"error": f"Tool {name} is disabled by admin"}))]
+            except Exception:
+                pass
+        
             if name == "authenticate_technician":
                 tech_id = arguments.get("tech_id")
                 phone = arguments.get("tech_phone")
@@ -518,6 +638,167 @@ def create_server() -> Server:
                         type="text", text=json.dumps(report_data, indent=2, default=str)
                     )
                 ]
+            elif name == "get_provider_location":
+                provider_id = arguments.get("provider_id")
+                cursor.execute(
+                    "SELECT * FROM tow_providers WHERE provider_id = ?", (provider_id,)
+                )
+                row = cursor.fetchone()
+                if not row:
+                    return [
+                        TextContent(
+                            type="text",
+                            text=json.dumps(
+                                {"error": f"Unknown provider: {provider_id}"}
+                            ),
+                        )
+                    ]
+                return [
+                    TextContent(type="text", text=json.dumps(dict(row), default=str))
+                ]
+            elif name == "dispatch_tow_truck":
+                provider_id = arguments.get("provider_id")
+                cursor.execute(
+                    "SELECT status FROM tow_providers WHERE provider_id = ?",
+                    (provider_id,),
+                )
+                row = cursor.fetchone()
+                if not row:
+                    return [
+                        TextContent(
+                            type="text",
+                            text=json.dumps(
+                                {"error": f"Unknown provider: {provider_id}"}
+                            ),
+                        )
+                    ]
+                if row["status"] != "available":
+                    # Real failure mode a single retry cannot fix on its own —
+                    # this is exactly what should surface as a ticket via
+                    # FailureNode, not a silent no-op.
+                    return [
+                        TextContent(
+                            type="text",
+                            text=json.dumps(
+                                {
+                                    "error": f"Provider {provider_id} is not available (status={row['status']})"
+                                }
+                            ),
+                        )
+                    ]
+
+                cursor.execute(
+                    """INSERT INTO fleet_dispatches
+                                   (run_id, vehicle_id, provider_id, distance_km, cost, location, status)
+                                   VALUES (?, ?, ?, ?, ?, ?, 'dispatched')""",
+                    (
+                        arguments.get("run_id"),
+                        arguments.get("vehicle_id"),
+                        provider_id,
+                        arguments.get("distance_km"),
+                        arguments.get("cost"),
+                        arguments.get("location"),
+                    ),
+                )
+                cursor.execute(
+                    "UPDATE tow_providers SET status = 'busy' WHERE provider_id = ?",
+                    (provider_id,),
+                )
+                conn.commit()
+                dispatch_id = cursor.lastrowid
+                return [
+                    TextContent(
+                        type="text",
+                        text=json.dumps(
+                            {
+                                "success": True,
+                                "dispatch_id": dispatch_id,
+                                "provider_id": provider_id,
+                            }
+                        ),
+                    )
+                ]
+
+            elif name == "update_vehicle_status":
+                dispatch_id = arguments.get("dispatch_id")
+                status = arguments.get("status")
+                cursor.execute(
+                    "UPDATE fleet_dispatches SET status = ?, updated_at = datetime('now') WHERE dispatch_id = ?",
+                    (status, dispatch_id),
+                )
+                if cursor.rowcount == 0:
+                    return [
+                        TextContent(
+                            type="text",
+                            text=json.dumps(
+                                {"error": f"Unknown dispatch_id: {dispatch_id}"}
+                            ),
+                        )
+                    ]
+                if status in ("completed", "failed"):
+                    cursor.execute(
+                        """UPDATE tow_providers SET status = 'available'
+                                       WHERE provider_id = (SELECT provider_id FROM fleet_dispatches WHERE dispatch_id = ?)""",
+                        (dispatch_id,),
+                    )
+                conn.commit()
+                return [TextContent(type="text", text=json.dumps({"success": True}))]
+
+            elif name == "notify_fleet_manager":
+                cursor.execute(
+                    "INSERT INTO fleet_manager_notifications (run_id, message) VALUES (?, ?)",
+                    (arguments.get("run_id"), arguments.get("message")),
+                )
+                conn.commit()
+                return [TextContent(type="text", text=json.dumps({"success": True}))]
+
+            elif name == "get_vehicle_telematics":
+                cursor.execute(
+                    "SELECT * FROM vehicle_telematics WHERE vehicle_id = ?",
+                    (arguments.get("vehicle_id"),),
+                )
+                row = cursor.fetchone()
+                if not row:
+                    return [
+                        TextContent(
+                            type="text",
+                            text=json.dumps(
+                                {
+                                    "error": f"No telematics for vehicle {arguments.get('vehicle_id')}"
+                                }
+                            ),
+                        )
+                    ]
+                return [
+                    TextContent(type="text", text=json.dumps(dict(row), default=str))
+                ]
+
+            elif name == "record_repair":
+                cursor.execute(
+                    """UPDATE vehicle_telematics
+                      SET dtc_codes='[]', engine_temperature=90,
+                          updated_at=datetime('now')
+                      WHERE vehicle_id = ?""",
+                    (arguments.get("vehicle_id"),),
+                )
+                if cursor.rowcount == 0:
+                    return [
+                        TextContent(
+                            type="text",
+                            text=json.dumps(
+                                {
+                                    "error": f"Unknown vehicle {arguments.get('vehicle_id')}"
+                                }
+                            ),
+                        )
+                    ]
+                conn.commit()
+                return [TextContent(type="text", text=json.dumps({"success": True}))]
+            # call_tool():
+            elif name == "search_providers":
+                cursor.execute("SELECT * FROM tow_providers ORDER BY provider_id")
+                rows = [dict(r) for r in cursor.fetchall()]
+                return [TextContent(type="text", text=json.dumps({"providers": rows}, default=str))]
             else:
                 return [
                     TextContent(

@@ -116,3 +116,8 @@ INSERT OR IGNORE INTO vehicle_telematics
 (1, 12.4, 118, 30.0444, 31.2357, '["P0217"]'),
 (2, 12.6, 90,  31.2001, 29.9187, '["P0420"]'),
 (3, 11.9, 95,  30.0131, 31.2089, '[]');
+--for graph 2--
+INSERT INTO episodic_memories (memory_id, content, importance, reason, vehicle_id, client_id) VALUES
+('mem_v1_001', 'ECU Stage 1 tune performed. Boost target raised to 1.1 bar. No anomalies. Customer satisfied on pickup.', 3, 'original tune record', 1, 1),
+('mem_v1_002', 'Customer returned 1 week later reporting minor hesitation at low RPM. Diagnosed as spark plug gap issue, resolved on-site.', 2, 'early symptom', 1, 1),
+('mem_v3_001', 'Catalytic converter delete performed. Customer warned about potential emissions test failure. Signed waiver.', 3, 'warranty-relevant modification', 3, 2);
