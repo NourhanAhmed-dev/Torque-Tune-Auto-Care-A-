@@ -1,0 +1,45 @@
+---
+doc_id: part_spec_101
+doc_type: part_spec
+sku: GT2860RS-KIT
+part_id: 101
+part_name: Stage 2 Turbocharger Kit
+---
+
+# Parts Specification: Stage 2 Turbocharger Kit
+
+**SKU:** GT2860RS-KIT
+
+**Part ID:** 101
+
+**Category:** Forced Induction
+
+**Manufacturer:** Garrett Performance
+
+## Compatibility
+
+Fits 2.0L–2.5L inline-4 turbo-capable engine blocks with a factory or aftermarket oil cooler provision.
+
+Requires the factory downpipe to be removed before fitment (see `part_id 104`).
+
+Not compatible with vehicles still running the factory ECU map. An ECU tune (`part_id 103`) is required after installation, otherwise the engine will run dangerously lean under boost.
+
+Not compatible with the factory intercooler piping. A front-mount intercooler (`part_id 102`) with matching flange size is required.
+
+## Torque Specs
+
+- **Turbo-to-manifold flange nuts:** 35 Nm, tightened in a star pattern.
+- **Oil feed banjo bolt:** 20 Nm.
+- **Oil return flange bolts:** 10 Nm.
+- **Compressor housing clamp:** 25 Nm.
+- Re-check all fasteners after the first 100 km of driving.
+
+## Installation Order
+
+**Install After:** None.
+
+This is the first component installed — everything else attaches to or depends on the turbo being in place.
+
+## Special Instructions
+
+Prime the oil feed line before first start by cranking with the fuel pump disabled for 10 seconds to avoid dry-starting the turbo bearings.

@@ -1,0 +1,41 @@
+---
+doc_id: part_spec_106
+doc_type: part_spec
+sku: TS-EBC-V2
+part_id: 106
+part_name: Electronic Boost Controller
+---
+
+# Parts Specification: Electronic Boost Controller
+
+**SKU:** TS-EBC-V2
+
+**Part ID:** 106
+
+**Category:** Forced Induction / Engine Management
+
+**Manufacturer:** Turbosmart
+
+## Compatibility
+
+Requires the turbo kit (`part_id 101`) to be installed, since the solenoid controls the wastegate on that specific turbo.
+
+Requires the ECU tune (`part_id 103`) to be loaded first. The boost controller's target curve is set from within the tune's software, not standalone. Installing it before the tune leaves it with no target map to follow.
+
+This is an optional part. A build can run wastegate spring pressure alone without this component if a fixed, lower boost target is acceptable.
+
+## Torque Specs
+
+- **Solenoid mounting bracket bolts:** 8 Nm.
+- **Vacuum/boost line barbed fittings:** Hand-tight plus a quarter turn, then hose-clamp.
+- Do not use thread sealant on push-fit barbed fittings, as it can crack them.
+
+## Installation Order
+
+**Install After:** `part_id 101`, `part_id 103`
+
+The electronic boost controller must be installed after the turbo kit and ECU tune because its solenoid controls the turbo wastegate and its target curve is configured through the ECU tune.
+
+## Special Instructions
+
+Route boost reference and solenoid output lines away from exhaust heat sources. Melted vacuum lines under boost are a common cause of sudden boost spikes on vehicles with this component installed.

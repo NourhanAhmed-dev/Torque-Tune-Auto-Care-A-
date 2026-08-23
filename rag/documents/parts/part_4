@@ -1,0 +1,41 @@
+---
+doc_id: part_spec_104
+doc_type: part_spec
+sku: AWE-DP-3IN-HF
+part_id: 104
+part_name: 3-Inch High-Flow Downpipe
+---
+
+# Parts Specification: 3-Inch High-Flow Downpipe
+
+**SKU:** AWE-DP-3IN-HF
+
+**Part ID:** 104
+
+**Category:** Exhaust
+
+**Manufacturer:** AWE Tuning
+
+## Compatibility
+
+Must be removed before the turbo kit (`part_id 101`) can be fitted, and reinstalled immediately after. The turbo's turbine outlet flange bolts directly to this part.
+
+Not compatible with factory catback systems narrower than 2.5 inches without an adapter. The resulting flow bottleneck can negate the benefit and cause backpressure-related boost creep.
+
+Contains a high-flow catalytic converter. Check local emissions regulations before installing a non-catted version.
+
+## Torque Specs
+
+- **Turbine outlet flange nuts:** 30 Nm, star pattern. Re-torque after heat cycle.
+- **Catback connection clamp:** 45 Nm.
+- **Oxygen sensor bungs:** 40 Nm. Anti-seize is required on threads.
+
+## Installation Order
+
+**Install After:** None.
+
+The downpipe must be removed before installing the turbo kit (`part_id 101`) and reinstalled immediately afterward. Treat it as being installed alongside `part_id 101`, rather than strictly after it.
+
+## Special Instructions
+
+Use a new gasket at the turbine outlet flange every time it is disturbed. Reusing the old gasket is a common cause of exhaust leaks after turbo installations.
