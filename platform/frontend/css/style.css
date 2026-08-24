@@ -1,0 +1,155 @@
+/* ============ Torque-Tune platform UI kit (friendly light theme) ============
+   NOTE for the team: every CSS custom property name and class name below
+   that appears in admin.html / index.html inline styles or in admin.js /
+   customer.js (badge(), addMsg(), showAgent()) is kept identical on
+   purpose — only colors, spacing, radius, shadows and a few small
+   additions changed. No logic files were touched. */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root{
+  /* base surfaces — warm off-white instead of flat gray */
+  --bg:#faf8ff; --surface:#ffffff; --surface-2:#f6f4fd;
+  --text:#211a3d; --muted:#6b6482; --line:#e9e4f7;
+
+  /* primary = friendly violet, kept under the SAME variable names used
+     inline in admin.html / index.html (--primary-soft, --blue-soft, etc) */
+  --primary:#7c5cff; --primary-dark:#6845f0; --primary-soft:#efeaff;
+  --green:#12b76a; --green-soft:#e9faf1;
+  --red:#f0426b; --red-soft:#ffeef2;
+  --amber:#f5a524; --amber-soft:#fff7e6;
+  --blue:#0ea5e9; --blue-soft:#eaf8ff;
+
+  /* warm accent used for small highlights/gradients only */
+  --coral:#ff8a65;
+
+  --radius:20px; --radius-sm:12px; --radius-pill:999px;
+  --shadow:0 2px 6px rgba(124,92,255,.06), 0 14px 32px -16px rgba(124,92,255,.28);
+  --shadow-sm:0 1px 2px rgba(33,26,61,.05), 0 6px 16px -10px rgba(33,26,61,.15);
+  --font-heading:'Poppins', 'Inter', system-ui, sans-serif;
+}
+
+*{box-sizing:border-box} html,body{margin:0}
+body{
+  font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  background:
+    radial-gradient(1100px 480px at 8% -8%, #efeaff 0%, transparent 60%),
+    radial-gradient(900px 420px at 100% 0%, #fff0e8 0%, transparent 55%),
+    var(--bg);
+  color:var(--text);font-size:14.5px;line-height:1.6;
+}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.82);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar-inner{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:14px;padding:14px 20px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:16.5px;font-family:var(--font-heading)}
+.brand-logo{width:36px;height:36px;border-radius:12px;color:#fff;font-size:17px;
+  background:linear-gradient(135deg,var(--primary),var(--coral));
+  display:grid;place-items:center;box-shadow:0 6px 14px -6px rgba(124,92,255,.55)}
+
+/* layout */
+.container{max-width:1080px;margin:0 auto;padding:32px 20px 80px}
+h1{font-family:var(--font-heading);font-size:27px;font-weight:700;margin:0 0 6px;letter-spacing:-.01em;color:#1c1533}
+.subtitle{color:var(--muted);margin:0 0 26px;font-size:15px}
+h2{font-family:var(--font-heading);font-size:16px;font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:10px}
+.h-icon{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-size:15px;flex:none;
+  box-shadow:inset 0 0 0 1px rgba(33,26,61,.04)}
+.hint{color:var(--muted);font-size:12.5px;margin:10px 0 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow-sm);padding:22px;margin:0 0 20px;
+  animation:cardIn .35s ease both}
+.card:hover{box-shadow:var(--shadow)}
+@keyframes cardIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:860px){.grid-2{grid-template-columns:1fr}}
+
+/* agent picker — warmer, bigger, more inviting */
+.agent-card{cursor:pointer;display:flex;gap:16px;align-items:flex-start;
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.agent-card:hover{transform:translateY(-3px) scale(1.01);box-shadow:var(--shadow)}
+.agent-card.sel{border-color:var(--primary);
+  box-shadow:0 0 0 3px var(--primary-soft),var(--shadow);
+  background:linear-gradient(180deg,#fff, #fbfaff)}
+.agent-icon{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;
+  font-size:21px;flex:none;box-shadow:inset 0 0 0 1px rgba(33,26,61,.04)}
+.ai-chat{background:var(--primary-soft)} .ai-rescue{background:var(--amber-soft)}
+.agent-card h3{margin:0 0 4px;font-size:15.5px;font-weight:700;font-family:var(--font-heading)}
+.agent-card p{margin:0;color:var(--muted);font-size:13px}
+
+/* buttons — friendly pill shape */
+.btn{border:0;border-radius:var(--radius-pill);padding:10px 18px;font-weight:700;font-size:13.5px;
+  cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+  transition:filter .15s,transform .05s,box-shadow .15s;letter-spacing:.01em}
+.btn:active{transform:scale(.97)}
+.btn:hover{filter:brightness(1.06)}
+.btn-primary{background:linear-gradient(135deg,var(--primary),#9b7bff);color:#fff;
+  box-shadow:0 6px 16px -6px rgba(124,92,255,.55)}
+.btn-success{background:var(--green);color:#fff;box-shadow:0 6px 16px -6px rgba(18,183,106,.45)}
+.btn-danger{background:var(--red);color:#fff;box-shadow:0 6px 16px -6px rgba(240,66,107,.4)}
+.btn-ghost{background:var(--surface);color:var(--text);border:1px solid var(--line);text-decoration:none}
+.btn-ghost:hover{background:var(--surface-2)}
+.btn-sm{padding:7px 13px;font-size:12.5px;border-radius:var(--radius-pill)}
+
+/* forms */
+label{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin:14px 0 6px}
+input,select,textarea{width:100%;border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:var(--surface-2);padding:11px 13px;font:inherit;color:var(--text);outline:none;
+  transition:border .15s,box-shadow .15s,background .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--primary);
+  box-shadow:0 0 0 4px var(--primary-soft);background:#fff}
+.row{display:flex;gap:12px;flex-wrap:wrap}.row>*{flex:1;min-width:150px}
+
+/* tables */
+table{width:100%;border-collapse:collapse}
+th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);
+  text-align:left;padding:9px 12px;border-bottom:2px solid var(--line)}
+td{padding:12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:var(--surface-2)}
+.empty{color:var(--muted);text-align:center;padding:26px 0!important;font-size:13.5px}
+
+/* status pills — rounder, a bit more color personality */
+.pill{display:inline-block;padding:4px 12px;border-radius:var(--radius-pill);font-size:11.5px;
+  font-weight:800;letter-spacing:.02em}
+.pill-completed{background:var(--green-soft);color:var(--green)}
+.pill-enabled{background:var(--green-soft);color:var(--green)}
+.pill-disabled{background:var(--red-soft);color:var(--red)}
+.pill-waiting_external{background:var(--amber-soft);color:var(--amber)}
+.pill-paused_hitl,.pill-waiting_hitl{background:var(--blue-soft);color:var(--blue)}
+.pill-failed,.pill-failed_ticket{background:var(--red-soft);color:var(--red)}
+.pill-cancelled,.pill-rejected{background:var(--surface-2);color:var(--muted)}
+.pill-running{background:var(--primary-soft);color:var(--primary-dark)}
+/* a few extra common statuses, additive only — safe if unused */
+.pill-pending{background:var(--amber-soft);color:var(--amber)}
+.pill-open{background:var(--red-soft);color:var(--red)}
+.pill-investigating{background:var(--amber-soft);color:var(--amber)}
+.pill-resolved{background:var(--green-soft);color:var(--green)}
+.pill-dispatched{background:var(--blue-soft);color:var(--blue)}
+.pill-arrived{background:var(--green-soft);color:var(--green)}
+
+/* outputs + chat + login */
+pre{background:#241c3d;color:#e7e2ff;border-radius:var(--radius-sm);padding:14px;
+  font-size:12px;overflow:auto;margin-top:14px;line-height:1.5}
+#chat{height:380px;overflow:auto;display:flex;flex-direction:column;padding:10px 4px;gap:2px}
+.msg{max-width:76%;padding:11px 16px;border-radius:18px;margin:4px 0;white-space:pre-wrap;
+  font-size:13.5px;animation:msgIn .18s ease both}
+@keyframes msgIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{align-self:flex-end;background:linear-gradient(135deg,var(--primary),#9b7bff);
+  color:#fff;border-bottom-right-radius:6px;box-shadow:0 4px 12px -6px rgba(124,92,255,.5)}
+.msg.bot{align-self:flex-start;background:var(--surface-2);border:1px solid var(--line);
+  border-bottom-left-radius:6px;color:var(--text)}
+
+.login-wrap{max-width:400px;margin:90px auto;padding:0 20px}
+.login-wrap .card{text-align:center}
+.login-wrap h2{justify-content:center;font-size:19px}
+.card .row { margin-bottom: 10px; }
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.btn-row .btn { flex: 1 1 170px; }
+.part-row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}
+.part-name{flex:1;min-width:180px}
+.chip{padding:2px 12px;border-radius:999px;font-size:12px;font-weight:600}
+.chip-pending{background:#fdf3d8;color:#9a6b00}
+.chip-delivered{background:#e3f7e9;color:#177245}
+.chip-cancelled{background:#fde8e8;color:#b3261e}

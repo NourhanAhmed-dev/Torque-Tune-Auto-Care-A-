@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Torque-Tune — Customer Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;600;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <span class="brand"
+          ><span class="brand-logo">🔧</span> Torque-Tune</span
+        >
+        <span style="color: var(--muted)">Customer Console</span>
+      </div>
+    </header>
+
+    <main class="container">
+      <h1>Hi there 👋 — how can we help today?</h1>
+      <p class="subtitle">Pick an assistant below — everything happens right here in chat.</p>
+
+      <div class="grid-2">
+        <div
+          class="card agent-card sel"
+          data-agent="tech"
+          onclick="showAgent('tech')"
+        >
+          <span class="agent-icon ai-chat">🛠️</span>
+          <div>
+            <h3>Tuning Technician</h3>
+            <p>Vehicles, modifications, invoices and service reports.</p>
+          </div>
+        </div>
+        <div
+          class="card agent-card"
+          data-agent="build"
+          onclick="showAgent('build')"
+        >
+          <span class="agent-icon" style="background: var(--green-soft)"
+            >🏁</span
+          >
+          <div>
+            <h3>Performance Build</h3>
+            <p>
+              Order a preset build (turbo kit…) and follow orders, approvals and
+              installation.
+            </p>
+          </div>
+        </div>
+        <div
+          class="card agent-card"
+          data-agent="rescue"
+          onclick="showAgent('rescue')"
+        >
+          <span class="agent-icon ai-rescue">🚛</span>
+          <div>
+            <h3>Fleet Rescue</h3>
+            <p>
+              Tell it who you are and what happened — it handles the rest and
+              keeps you posted.
+            </p>
+          </div>
+        </div>
+        <div
+          class="card agent-card"
+          data-agent="warranty"
+          onclick="showAgent('warranty')"
+        >
+          <span class="agent-icon" style="background: var(--amber-soft)"
+            >🛡️</span
+          >
+          <div>
+            <h3>Warranty &amp; Comebacks</h3>
+            <p>
+              Problem after a tune? Open a complaint and follow the
+              investigation to your final decision.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <section class="card">
+        <h2>
+          <span class="h-icon ai-chat">💬</span>
+          <span id="chat_title">Chat with the technician</span>
+        </h2>
+        <div id="chat"></div>
+        <div class="row" style="margin-top: 12px">
+          <input
+            id="chat_in"
+            placeholder="Type your message…"
+            onkeydown="if (event.key === 'Enter') sendChat();"
+          />
+          <button
+            class="btn btn-primary"
+            style="flex: none"
+            onclick="sendChat()"
+          >
+            Send ➤
+          </button>
+        </div>
+        <p class="hint" id="chat_hint">Example: "list available vehicles"</p>
+      </section>
+    </main>
+    <script src="/js/api.js"></script>
+    <script src="/js/customer.js"></script>
+  </body>
+</html>
