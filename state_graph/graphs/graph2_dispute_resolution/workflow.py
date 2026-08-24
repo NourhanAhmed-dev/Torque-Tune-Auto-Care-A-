@@ -189,7 +189,8 @@ class Graph2Warranty:
         g.add_conditional_edges(
             AWAIT_CLIENT_DECISION,
             self.nodes._route_after_client,
-            {END: END, COMPLETE: COMPLETE},
+            {END: END, COMPLETE: COMPLETE,
+             SENIOR_REVIEW_HITL: SENIOR_REVIEW_HITL},
         )
 
         g.add_edge(COMPLETE, END)
@@ -244,47 +245,34 @@ class Graph2Warranty:
         return self._invoke(state)
 
     def resume_after_hitl_approval(self, request_id: int) -> Graph2State:
-        """Call once an admin has approved/rejected the senior-review
-        request. Pulls the *exact* checkpointed state SENIOR_REVIEW_HITL
-        paused on (not just the latest checkpoint for the run -- those
-        could differ if something else touched the run meanwhile).
-
-        - approved -> the candidate responsibility already sitting in
-          `state["responsibility"]` (set by the constrained ReAct loop
-          in DETERMINE_RESPONSIBILITY before the pause) is confirmed.
-          We just clear the ambiguity flag and resume.
-        - rejected -> ApprovalService only carries approve/reject + a
-          free-text comment, no corrected value, so there is nothing to
-          apply automatically. This escalates to a ticket the same way
-          an inconclusive inspection does, and raises FailurePaused
-          (caller must catch it, same as elsewhere).
-        """
-        data = self.hitl_manager.resume_data(request_id)  # raises ValueError if still pending
-
-        state: Graph2State = dict(data["state"])  # type: ignore[assignment]
-        admin_decision = data["admin_decision"]  # {"approved": bool, "comment": str, "admin_id": str}
+        data = self.hitl_manager.resume_data(request_id)
+        state: Graph2State = dict(data["state"])
+        admin_decision = data["admin_decision"]
         state["hitl_decision"] = admin_decision
-
+    
+        req = self.hitl_manager.approvals.get_request(request_id)
+        action = req.get("action", {})
+    
         if data["approved"]:
-            state["responsibility_ambiguous"] = False
             state["status"] = "running"
+            if action.get("type") == "client_escalation":
+                state["proposed_resolution"] = admin_decision.get("comment", "Escalation approved. Manager will contact client.")
+                state["responsibility_ambiguous"] = False
+            else:
+                state["responsibility_ambiguous"] = False
             return self._invoke(state)
-
+    
         error = HitlRejected(
-            f"Senior reviewer rejected candidate responsibility "
-            f"'{state.get('responsibility')}' for run {state['run_id']}: "
+            f"Senior reviewer rejected request for run {state['run_id']}: "
             f"{admin_decision.get('comment', '')}"
         )
-        # TicketManager.capture_failure() always raises FailurePaused
-        # after checkpointing this state and opening a ticket -- it
-        # never returns. Propagates straight to the caller.
         self.ticket_manager.capture_failure(
-            run_id=state["run_id"],
-            node_name=SENIOR_REVIEW_HITL,
-            state=state,
-            error=error,
-        )
-        raise AssertionError("unreachable: TicketManager.capture_failure() always raises FailurePaused")
+        run_id=state["run_id"],
+        node_name=SENIOR_REVIEW_HITL,
+        state=state,
+        error=error,
+    )
+        raise AssertionError("unreachable")
 
     def resume_after_ticket_resolution(self, ticket_id: int) -> Graph2State:
         """Call once a ticket has been resolved. Two different nodes can
@@ -352,11 +340,13 @@ class Graph2Warranty:
         return dict(latest.state)  # type: ignore[return-value]
 
     def _invoke(self, state: Graph2State) -> Graph2State:
-        """Re-run the whole compiled graph from START. Already-completed
-        nodes are no-ops via `should_skip`; nodes waiting on a plain
-        external input (inspection scheduling, client reply) route
-        straight to END. HitlPaused / FailurePaused are intentionally
-        NOT caught here -- they must surface to the caller so it can
-        track the request_id / ticket_id needed to resume this exact
-        run later."""
+        """Re-run the whole compiled graph from START."""
+        completed = list(state.get("completed_nodes", []))
+        hitl_decision = state.get("hitl_decision")
+    
+        if hitl_decision and SENIOR_REVIEW_HITL not in completed:
+            completed.append(SENIOR_REVIEW_HITL)
+            state["completed_nodes"] = completed
+            state["status"] = "running" 
+    
         return self._graph.invoke(state)

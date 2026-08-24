@@ -170,15 +170,28 @@ class SourcingInstallGraph:
 
     def _prepare_initial_state(
         self, *, run_id: str, state: SourcingState, entry_fields: dict[str, Any]
-    ) -> _GraphState:
+        ) -> _GraphState:
         resume_info = get_resume_info(run_id, self.checkpoint_manager)
         if resume_info.can_resume:
             base = {**state, **resume_info.state}
             base["completed_nodes"] = resume_info.completed_nodes
         else:
             base = {**state, "completed_nodes": []}
+    
+        entry = entry_fields.get("entry")
+        if entry in ("event", "hitl"):
+            nodes_to_reset = {
+            "apply_event_effects", 
+            "price_check", 
+            "substitute_check", 
+            "apply_hitl_decision", 
+            "task_decomposition"
+        }
+            base["completed_nodes"] = [
+            n for n in base["completed_nodes"] if n not in nodes_to_reset
+        ]
+    
         return {**base, "run_id": run_id, **entry_fields}
-
     @staticmethod
     def _should_skip_node(node_name: str, state: _GraphState) -> bool:
         resume_info = ResumeInfo(
@@ -415,12 +428,13 @@ class SourcingInstallGraph:
         orders = dict(new_state.get("orders", {}))
         order = dict(orders[order_id])
         order["status"] = "confirmed"
+        if "final_price" not in order or order["final_price"] is None:
+            order["final_price"] = order.get("quoted_price")
         orders[order_id] = order
         new_state["orders"] = orders
-        # >>> persistence: keep supplier_orders.status in sync with the
-        # in-memory state now that a human has confirmed the order despite
-        # the price deviation.
         self.repo.update_order_status(order_id, "confirmed")
+        if order.get("final_price"):
+            self.repo.update_final_price(order_id, order["final_price"])
         return new_state
 
     def _cancel_order(self, state: _GraphState, order_id: int) -> dict[str, Any]:

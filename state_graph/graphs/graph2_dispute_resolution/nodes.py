@@ -460,49 +460,40 @@ class Graph2Nodes:
 
     def _n_senior_review_hitl(self, state: Graph2State) -> Graph2State:
         resume_info = self._resume_info(state)
-
         if should_skip(SENIOR_REVIEW_HITL, resume_info):
-            # We only get here on a resumed invoke where
-            # resume_after_hitl_approval() already handled the decision
-            # before re-invoking the graph: an approval merged
-            # `hitl_decision` into the state and cleared the ambiguity
-            # flag; a rejection never reaches here at all -- it opens a
-            # ticket instead (see resume_after_hitl_approval). So by the
-            # time this branch runs, `responsibility` is already final.
             decision = state.get("hitl_decision")
             if decision is not None and decision.get("approved"):
                 state["responsibility_ambiguous"] = False
                 state["status"] = "running"
             return state
-
-        # Not yet reviewed. Mark the node complete *before* pausing, so
-        # that after the admin decides and we resume, should_skip()
-        # treats this node as done and lets the (now decision-carrying)
-        # state flow straight through to AWAIT_CLIENT_DECISION.
+    
         state["status"] = "waiting_hitl"
         completed = list(state.get("completed_nodes", []))
         completed.append(SENIOR_REVIEW_HITL)
         state["completed_nodes"] = completed
-
-        # HitlNode.run() -> HitlManager.require_decision() ALWAYS raises
-        # HitlPaused after checkpointing this exact state and creating
-        # an approval request. It never returns normally. Callers of
-        # start()/submit_inspection_result() must catch HitlPaused and
-        # hold on to its .request_id / .checkpoint_id to resume later
-        # via resume_after_hitl_approval().
+    
+        if state.get("client_decision") == "escalate":
+            action = {
+            "type": "client_escalation",
+            "reason": "Client requested escalation to manager/senior review.",
+            "complaint": state.get("complaint", {}),
+            "inspection_result": state.get("inspection_result", {}),
+        }
+            reason = "Client escalated the case for senior review."
+        else:
+            action = {
+            "type": "confirm_responsibility",
+            "candidate": state.get("responsibility"),
+            "react_trace": state.get("responsibility_react_trace", []),
+        }
+            reason = "Inspection evidence is ambiguous; needs senior sign-off on responsibility."
+    
         self.hitl_node.run(
-            run_id=state["run_id"],
-            state=dict(state),
-            action={
-                "type": "confirm_responsibility",
-                "candidate": state.get("responsibility"),
-                # Full think/act/observe trail from the constrained
-                # ReAct loop, so the reviewer sees *why* the agent
-                # landed here instead of just the raw candidate value.
-                "react_trace": state.get("responsibility_react_trace", []),
-            },
-            reason="Inspection evidence is ambiguous; needs senior sign-off on responsibility.",
-        )
+        run_id=state["run_id"],
+        state=dict(state),
+        action=action,
+        reason=reason,
+    )
         raise AssertionError("unreachable: HitlManager.require_decision() always raises HitlPaused")
 
     def _n_await_client_decision(self, state: Graph2State) -> Graph2State:
@@ -519,6 +510,8 @@ class Graph2Nodes:
     def _route_after_client(self, state: Graph2State) -> str:
         if state.get("client_decision") is None:
             return END
+        if state.get("client_decision") == "escalate":
+            return SENIOR_REVIEW_HITL
         return COMPLETE
 
     def _n_complete(self, state: Graph2State) -> Graph2State:
