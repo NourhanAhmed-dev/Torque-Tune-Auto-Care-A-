@@ -1,5 +1,4 @@
-/* Customer console: four conversational agents + proactive updates. */
-
+/* Customer console: four conversational agents + proactive updates + theme. */
 let agent = "tech";
 let rescueRun   = localStorage.getItem("rescue_run")   || null;
 let buildRun    = localStorage.getItem("build_run")    || null;
@@ -8,10 +7,21 @@ let lastNews         = localStorage.getItem("rescue_news")   || "";
 let lastBuildNews    = localStorage.getItem("build_news")    || "";
 let lastWarrantyNews = localStorage.getItem("warranty_news") || "";
 
+/* ---------- theme ---------- */
+function toggleTheme() {
+  const root = document.documentElement;
+  const dark = root.getAttribute("data-theme") === "dark";
+  if (dark) root.removeAttribute("data-theme");
+  else root.setAttribute("data-theme", "dark");
+  localStorage.setItem("tt_theme", dark ? "" : "dark");
+  const b = el("theme_btn");
+  if (b) b.textContent = dark ? "🌙" : "☀️";
+}
+
 function showAgent(which) {
   agent = which;
-  document.querySelectorAll(".agent-card").forEach(c =>
-    c.classList.toggle("sel", c.dataset.agent === which));
+  document.querySelectorAll(".sidebar a").forEach(a =>
+    a.classList.toggle("on", a.dataset.agent === which));
   const titles = {
     tech:     "Chat with the technician",
     rescue:   "Fleet Rescue concierge",
@@ -19,10 +29,10 @@ function showAgent(which) {
     warranty: "Warranty & Comebacks concierge"
   };
   const hints = {
-    tech:     "Example: ”list available vehicles”",
-    rescue:   "Example: ”Hi, I'm customer 2, vehicle 3 — engine failure on the desert road.”",
-    build:    "Example: ”I'm customer 2, vehicle 3 — I want the stage2_turbo_stock_power build.”",
-    warranty: "Example: ”I'm customer 1, vehicle 1 — the car lost power since last week's tune.”"
+    tech:     "Example: “list available vehicles”",
+    rescue:   "Example: “Hi, I'm customer 2, vehicle 3 — engine failure on the desert road.”",
+    build:    "Example: “I'm customer 2, vehicle 3 — I want the stage2_turbo_stock_power build.”",
+    warranty: "Example: “I'm customer 1, vehicle 1 — the car lost power since last week's tune.”"
   };
   el("chat_title").textContent = titles[which];
   el("chat_hint").textContent  = hints[which];
@@ -48,24 +58,21 @@ async function sendChat() {
     if (agent === "rescue") {
       const r = await post("/api/agents/rescue_chat", { message: msg, run_id: rescueRun });
       if (r.run_id) { rescueRun = r.run_id; localStorage.setItem("rescue_run", r.run_id); }
-      else        { rescueRun = null;      localStorage.removeItem("rescue_run"); }
+      else          { rescueRun = null;      localStorage.removeItem("rescue_run"); }
       reply = typeof r.reply === "string" ? r.reply : JSON.stringify(r.reply, null, 2);
       lastNews = reply; localStorage.setItem("rescue_news", lastNews);
-
     } else if (agent === "build") {
       const r = await post("/api/agents/build_chat", { message: msg, run_id: buildRun });
       if (r.run_id) { buildRun = r.run_id; localStorage.setItem("build_run", r.run_id); }
-      else        { buildRun = null;    localStorage.removeItem("build_run"); }
+      else          { buildRun = null;    localStorage.removeItem("build_run"); }
       reply = typeof r.reply === "string" ? r.reply : JSON.stringify(r.reply, null, 2);
       lastBuildNews = reply; localStorage.setItem("build_news", lastBuildNews);
-
     } else if (agent === "warranty") {
       const r = await post("/api/agents/warranty_chat", { message: msg, run_id: warrantyRun });
       if (r.run_id) { warrantyRun = r.run_id; localStorage.setItem("warranty_run", r.run_id); }
-      else        { warrantyRun = null;    localStorage.removeItem("warranty_run"); }
+      else          { warrantyRun = null;    localStorage.removeItem("warranty_run"); }
       reply = typeof r.reply === "string" ? r.reply : JSON.stringify(r.reply, null, 2);
       lastWarrantyNews = reply; localStorage.setItem("warranty_news", lastWarrantyNews);
-
     } else {
       const r = await post("/api/agents/chat", { message: msg, agent: "tuning-technician" });
       reply = typeof r.reply === "string" ? r.reply : JSON.stringify(r.reply, null, 2);
@@ -77,7 +84,7 @@ async function sendChat() {
   addMsg(reply, "bot");
 }
 
-/* Proactive updates for the three tracked runs. */
+/* Proactive updates for the tracked runs. */
 setInterval(async () => {
   try {
     if (rescueRun) {
@@ -112,3 +119,13 @@ setInterval(async () => {
     }
   } catch (e) { /* ignore */ }
 }, 5000);
+
+/* sidebar wiring — attached ONCE (not inside showAgent) */
+document.querySelectorAll(".sidebar a").forEach(a =>
+  a.addEventListener("click", e => { e.preventDefault(); showAgent(a.dataset.agent); }));
+
+window.addEventListener("load", () => {
+  const b = el("theme_btn");
+  if (b) b.textContent =
+    document.documentElement.getAttribute("data-theme") === "dark" ? "☀️" : "🌙";
+});

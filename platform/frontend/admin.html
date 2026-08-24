@@ -1,124 +1,170 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Torque-Tune — Admin</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/css/style.css"/>
+<script>
+  if (localStorage.getItem("tt_theme") === "dark")
+    document.documentElement.setAttribute("data-theme", "dark");
+</script>
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner">
-  <span class="brand"><span class="brand-logo"
-    style="background:linear-gradient(135deg,#7c5cff,#ff8a65)">🛡️</span> Torque-Tune Admin</span>
-  <span style="margin-left:auto;display:flex;gap:8px">
-    <a class="btn btn-ghost btn-sm" href="/">👋 Customer console</a>
-    <button class="btn btn-ghost btn-sm" onclick="logout()">Log out</button>
-  </span>
-</div></header>
+<header class="topbar">
+  <div class="topbar-inner">
+    <span class="brand"><span class="brand-logo">🛡️</span> Torque-Tune <em class="brand-tag">ADMIN</em></span>
+    <span class="top-actions">
+      <button id="theme_btn" class="btn btn-ghost btn-sm" onclick="toggleTheme()">🌙</button>
+      <a class="btn btn-ghost btn-sm" href="/">👋 Customer console</a>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Log out</button>
+    </span>
+  </div>
+</header>
 
+<!-- login (sidebar lives INSIDE #console, so it never shows here) -->
 <div id="login" class="login-wrap">
   <div class="card">
-    <h2><span class="h-icon" style="background:var(--primary-soft)">🔐</span> Welcome back</h2>
-    <p class="subtitle" style="margin-bottom:18px">Enter your admin passcode to open the console.</p>
+    <h2><span class="h-icon ai-chat">🔐</span> Welcome back</h2>
+    <p class="hint">Enter your admin passcode to open the console.</p>
     <label>Passcode</label>
-    <input id="pass" type="password" placeholder="Enter admin passcode"
-           onkeydown="if(event.key==='Enter')login()">
-    <p style="margin:16px 0 0"><button class="btn btn-primary" onclick="login()" style="width:100%;justify-content:center">Sign in ✨</button></p>
+    <input id="pass" type="password" onkeydown="if(event.key==='Enter')login()"/>
+    <div class="row" style="margin-top:12px">
+      <button class="btn btn-primary" style="flex:none" onclick="login()">Sign in ✨</button>
+    </div>
     <pre id="login_out" style="display:none"></pre>
   </div>
 </div>
 
-<main id="console" class="container" style="display:none">
-  <h1>Hey there 👋 — here's what needs you today</h1>
-  <p class="subtitle">Approvals, tickets, runs, tools and RAG documents — all live, all in one place.</p>
+<div id="console" style="display:none">
+  <nav class="sidebar">
+    <span class="brand"><span class="brand-logo">🛡️</span> Torque-Tune</span>
+    <span class="grp">Overview</span>
+    <a href="#" data-page="hits" class="on">🙋 Approvals &amp; tickets</a>
+    <a href="#" data-page="runs">🏃 Runs</a>
+    <span class="grp">Workflows</span>
+    <a href="#" data-page="src">🚚 Sourcing · Graph 1</a>
+    <a href="#" data-page="war">🛡️ Warranty · Graph 2</a>
+    <span class="grp">System</span>
+    <a href="#" data-page="ops">🧰 Tools &amp; RAG</a>
+  </nav>
 
-  <div class="grid-2">
-    <section class="card">
-      <h2><span class="h-icon" style="background:var(--blue-soft)">🙋</span> HITL queue</h2>
-      <table id="hitl_tbl"></table>
-      <pre id="h_out" style="display:none"></pre>
+  <main class="container">
+    <h1>Operations console</h1>
+    <p class="subtitle">Approvals, tickets, runs, tools and RAG documents — all live, all in one place.</p>
+
+    <section data-page="hits">
+      <div class="stats">
+        <div class="stat"><span class="ic" style="background:var(--blue-soft)">🙋</span><div><b id="stat_hitl">0</b><span>PENDING APPROVALS</span></div></div>
+        <div class="stat"><span class="ic" style="background:var(--red-soft)">🎫</span><div><b id="stat_tickets">0</b><span>OPEN TICKETS</span></div></div>
+        <div class="stat"><span class="ic" style="background:var(--amber-soft)">⏳</span><div><b id="stat_active">0</b><span>ACTIVE RUNS</span></div></div>
+        <div class="stat"><span class="ic" style="background:var(--green-soft)">✅</span><div><b id="stat_done">0</b><span>COMPLETED</span></div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h2><span class="h-icon" style="background:var(--blue-soft)">🙋</span> HITL queue</h2>
+          <table id="hitl_tbl"></table>
+          <pre id="h_out" style="display:none"></pre>
+        </div>
+        <div class="card">
+          <h2><span class="h-icon" style="background:var(--red-soft)">🎫</span> Failure tickets</h2>
+          <table id="tickets_tbl"></table>
+          <pre id="t_out" style="display:none"></pre>
+        </div>
+      </div>
     </section>
-    <section class="card">
-      <h2><span class="h-icon" style="background:var(--red-soft)">🎫</span> Failure tickets</h2>
-      <table id="tickets_tbl"></table>
-      <pre id="t_out" style="display:none"></pre>
+
+    <section data-page="runs" style="display:none">
+      <div class="card">
+        <h2><span class="h-icon" style="background:var(--amber-soft)">🏃</span> Runs — act as the provider</h2>
+        <p class="hint">Accept / Reject simulate the provider webhook (Graph 3). Sourcing runs use “Supplier step ▶”. Warranty runs use the Warranty card.</p>
+        <table id="runs_tbl"></table>
+        <pre id="ev_out" style="display:none"></pre>
+      </div>
     </section>
-  </div>
-      <section class="card">
-    <h2><span class="h-icon" style="background:var(--green-soft)">🚚</span> Supplier desk (Graph 1)</h2>
-    <div class="row">
-      <input id="sup_run" placeholder="run_id (build_… / src_…)">
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-success" onclick="supplierDecision('accept')">✅ Accept (quoted price)</button>
-      <button class="btn btn-primary" onclick="supplierDecision('raise_price')">💰 Accept +15%</button>
-      <button class="btn btn-danger" onclick="supplierDecision('reject')">❌ Reject order</button>
-      <button class="btn btn-ghost" onclick="supplierDecision('unavailable')">📦 Part unavailable</button>
-    </div>
+
+    <section data-page="src" style="display:none">
+      <div class="card">
+        <h2><span class="h-icon" style="background:var(--green-soft)">🚚</span> Sourcing build (Graph 1)</h2>
         <div class="row">
-      <button class="btn btn-ghost" style="flex:none" onclick="loadParts()">📦 Load parts &amp; fates</button>
-    </div>
-    <div id="parts_box"></div>
-    <pre id="sup_out" style="display:none"></pre>
-    <details style="margin-top:12px">
-      <summary class="hint">Advanced: manual event simulator</summary>
-      <!-- الفورم القديم بتاع الـ fields حطيه جوّا الـ details ده -->
-    </details>
-  </section>
-      <section class="card">
-    <h2><span class="h-icon" style="background:var(--amber-soft)">🛡️</span> Warranty dispute (Graph 2)</h2>
-    <div class="row">
-      <input id="war_vehicle" type="number" value="1" placeholder="vehicle_id">
-      <input id="war_client" type="number" value="1" placeholder="client_id">
-      <input id="war_desc" value="Loss of power since the last tune" placeholder="complaint">
-      <button class="btn btn-primary" style="flex:none" onclick="startWarranty()">Open complaint</button>
-    </div>
-    <label>Workshop actions (run_id from the runs table)</label>
-    <div class="row">
-      <input id="war_run" placeholder="run_id (war_…)">
-      <select id="war_ins">
-        <option value="">— inspection result —</option>
-        <option>tuning_fault</option><option>unrelated</option><option>inconclusive</option>
-      </select>
-      <button class="btn btn-primary" style="flex:none" onclick="sendInspection()">Submit inspection</button>
-    </div>
-    <div class="row">
-      <select id="war_dec">
-        <option value="">— client decision —</option>
-        <option>accept</option><option>reject</option><option>escalate</option>
-      </select>
-      <button class="btn btn-primary" style="flex:none" onclick="sendDecision()">Submit decision</button>
-    </div>
-    <pre id="war_out" style="display:none"></pre>
-  </section>
-    <section class="card">
-    <h2><span class="h-icon" style="background:var(--amber-soft)">🏃</span> Runs — act as the provider</h2>
-    <p class="hint">Press Accept / Reject on a waiting run to simulate the provider's webhook.
-       On Reject the graph records it, frees the provider, and searches for another one.</p>
-    <table id="runs_tbl"></table>
-    <pre id="ev_out" style="display:none"></pre>
-  </section>
-
-  <div class="grid-2">
-    <section class="card">
-      <h2><span class="h-icon" style="background:var(--green-soft)">🧰</span> MCP tools (live server)</h2>
-      <table id="tools_tbl"></table>
+          <input id="src_preset" value="stage2_turbo_stock_power"/>
+          <button class="btn btn-primary" style="flex:none" onclick="startSourcing()">Start build 🚀</button>
+        </div>
+        <details style="margin-top:6px">
+          <summary class="hint">Advanced: manual event simulator</summary>
+          <div class="row" style="margin-top:12px">
+            <input id="ev2_run" placeholder="run_id"/>
+            <select id="ev2_type">
+              <option>price_changed</option><option>delivery_confirmed</option>
+              <option>cancelled</option><option>substitute_offered</option>
+            </select>
+          </div>
+          <div class="row">
+            <input id="ev2_order" type="number" placeholder="order_id"/>
+            <input id="ev2_part" type="number" placeholder="part_id"/>
+            <input id="ev2_price" type="number" placeholder="final_price"/>
+          </div>
+          <div class="row">
+            <input id="ev2_sub" placeholder="substitute_part"/>
+            <input id="ev2_warranty" placeholder="warranty_impact"/>
+            <button class="btn btn-primary" style="flex:none" onclick="sendSourcingEvent()">Send event</button>
+          </div>
+        </details>
+        <pre id="src_out" style="display:none"></pre>
+      </div>
     </section>
-    <section class="card">
-      <h2><span class="h-icon" style="background:var(--primary-soft)">📚</span> RAG documents</h2>
-      <table id="docs_tbl"></table>
-      <label>Relative path</label>
-      <input id="doc_name" placeholder="fleet_contracts/acme.md">
-      <label>Content (must start with --- frontmatter)</label>
-      <textarea id="doc_body" rows="5"></textarea>
-      <p style="margin:14px 0 0"><button class="btn btn-primary" onclick="addDoc()">Add &amp; re-ingest</button></p>
-      <pre id="doc_out" style="display:none"></pre>
-    </section>
-  </div>
 
-</main>
+    <section data-page="war" style="display:none">
+      <div class="card">
+        <h2><span class="h-icon" style="background:var(--amber-soft)">🛡️</span> Warranty dispute (Graph 2)</h2>
+        <div class="row">
+          <input id="war_vehicle" type="number" value="1"/>
+          <input id="war_client" type="number" value="1"/>
+          <input id="war_desc" value="Loss of power since the last tune"/>
+          <button class="btn btn-primary" style="flex:none" onclick="startWarranty()">Open complaint</button>
+        </div>
+        <label>Workshop actions (run_id from the Runs table)</label>
+        <div class="row">
+          <input id="war_run" placeholder="run_id (war_…)"/>
+          <select id="war_ins">
+            <option value="">— inspection result —</option>
+            <option>tuning_fault</option><option>unrelated</option><option>inconclusive</option>
+          </select>
+          <button class="btn btn-primary" style="flex:none" onclick="sendInspection()">Submit inspection</button>
+        </div>
+        <div class="row">
+          <select id="war_dec">
+            <option value="">— client decision —</option>
+            <option>accept</option><option>reject</option><option>escalate</option>
+          </select>
+          <button class="btn btn-primary" style="flex:none" onclick="sendDecision()">Submit decision</button>
+        </div>
+        <pre id="war_out" style="display:none"></pre>
+      </div>
+    </section>
+
+    <section data-page="ops" style="display:none">
+      <div class="card">
+        <h2><span class="h-icon" style="background:var(--primary-soft)">🧰</span> MCP tools (live server)</h2>
+        <table id="tools_tbl"></table>
+      </div>
+      <div class="card">
+        <h2><span class="h-icon" style="background:var(--green-soft)">📚</span> RAG documents</h2>
+        <div class="row">
+          <input id="doc_name" placeholder="relative/path.md"/>
+        </div>
+        <textarea id="doc_body" rows="6" placeholder="--- frontmatter ---&#10;then content"></textarea>
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-primary" style="flex:none" onclick="addDoc()">Add &amp; re-ingest</button>
+        </div>
+        <table id="docs_tbl" style="margin-top:14px"></table>
+        <pre id="doc_out" style="display:none"></pre>
+      </div>
+    </section>
+  </main>
+</div>
 <script src="/js/api.js"></script>
 <script src="/js/admin.js"></script>
 </body>
